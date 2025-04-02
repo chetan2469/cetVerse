@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "584431418912",
+    "project_id": "cetverse-6fe07",
+    "storage_bucket": "cetverse-6fe07.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:584431418912:android:bc4f83948d2b86f8ff4645",
+        "android_client_info": {
+          "package_name": "cet.com.cet_verse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC71xR1K1zjePN5Z8rB6MMTVGhQk3Vk60s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
