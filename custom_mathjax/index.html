@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>MathJax TeX Test Page</title>
+
+    <script>
+        // MathJax = {
+        //     tex: {
+        //         packages: ['ams', 'newcommand', 'configmacros'],
+        //         inlineMath: [['$', '$'], ["\\(", "\\)"]],
+        //         processEscapes: true,
+        //         macros: {
+        //             RR: "{\\bf R}",
+        //             bold: ["{\\bf #1}", 1]
+        //         },
+        //     },
+        //     svg: {
+        //         fontCache: 'global',
+        //     },
+        // };
+    </script>
+
+    <script src="dist/custom-mathjax.js" id="MathJax-script" async></script>
+</head>
+
+<body>
+    $$
+    \begin{aligned}
+    \dot{x} & = \sigma(y-x) \\
+    \dot{y} & = \rho x - y - xz \\
+    \dot{z} & = -\beta z + xy
+    \end{aligned}
+    $$
+
+    <math>
+        <msqrt>
+            <mrow>
+                <mi>x</mi>
+            </mrow>
+        </msqrt>
+    </math>
+
+
+    <h4>Chemistry Equations</h4>", r"""<p>
+        \( \ce{CO2 + C -> 2 CO} \) <br>
+        \( \ce{Hg^2+ ->[I-] HgI2 ->[I-] [Hg^{II}I4]^2-} \)<br>
+        Scroll long formulas in Katex $$ \ce{x Na(NH4)HPO4 ->[\Delta] (NaPO3)_x + x Nh4 ^ + x H2O} $$ <br>
+    </p>
+</body>
+
+</html>
