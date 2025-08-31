@@ -399,7 +399,7 @@ class _TestState extends State<Test> {
       final correctIndex = _answerToIndex(mcq['answer'] as String? ?? "A");
       if (userAnswers[i] == correctIndex) {
         correctCount++;
-        if (widget.pyqType?.toLowerCase() == 'pcm' && subject == 'Maths') {
+        if (widget.pyqType.toLowerCase() == 'pcm' && subject == 'Maths') {
           totalScore += 2;
         } else {
           totalScore += 1;

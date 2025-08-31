@@ -287,7 +287,7 @@ class _AddPyqState extends State<AddPyq> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('JSON Structure'),
-        content: Container(
+        content: SizedBox(
           width: double.maxFinite,
           height: MediaQuery.of(context).size.height * 0.5,
           child: SingleChildScrollView(

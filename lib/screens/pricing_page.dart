@@ -1,5 +1,6 @@
+// lib/pages/PricingPage.dart
 import 'package:cet_verse/core/auth/AuthProvider.dart';
-import 'package:cet_verse/payentgetway/PaymentPage.dart';
+import 'package:cet_verse/paymentGetway/RazorpayQuickPayPage.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,55 +8,119 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class PricingPage extends StatelessWidget {
   const PricingPage({super.key});
 
-  // Function to handle purchase and update Firestore
-  Future<void> _handlePurchase(
-      BuildContext context, String planName, double amount) async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final userPhoneNumber = authProvider.userPhoneNumber;
+  // --- helpers ---
+  int _levelFor(String? plan) {
+    switch (plan) {
+      case 'Plus':
+        return 1;
+      case 'Pro':
+        return 2;
+      case 'Starter':
+      default:
+        return 0;
+    }
+  }
 
-    if (userPhoneNumber == null) {
+  Future<void> _activateFreePlan(BuildContext context) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final phone = auth.userPhoneNumber;
+    if (phone == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to activate')),
+      );
+      return;
+    }
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(phone).set(
+        {
+          'subscription': {
+            'planType': 'Starter',
+            'status': 'active',
+            'amountPaid': 0,
+            'paymentMethod': 'none',
+            'startDate': FieldValue.serverTimestamp(),
+            'endDate': null,
+          },
+          'features': {
+            'mhtCetPyqsAccess': 'limited',
+            'boardPyqsAccess': false,
+            'chapterWiseNotesAccess': false,
+            'topperNotesDownload': false,
+            'mockTestsPerSubject': 1,
+            'fullMockTestSeries': false,
+            'topperProfilesAccess': 'read-only',
+            'performanceTracking': true,
+            'priorityFeatureAccess': false,
+          }
+        },
+        SetOptions(merge: true),
+      );
+      await auth.fetchUserData(phone);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Starter plan activated')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _startPaidPlan(
+    BuildContext context, {
+    required String planCode, // 'Plus' or 'Pro'
+    required double rupees,
+  }) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final phone = auth.userPhoneNumber;
+    if (phone == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please log in to purchase a plan')),
       );
       return;
     }
 
-    // Simulate payment initiation (replace with actual payment gateway integration)
-    try {
-      // Placeholder for payment gateway logic (e.g., Razorpay)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Processing purchase for $planName plan (₹$amount)')),
-      );
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RazorpayQuickPayPage(
+          mobile: phone,
+          priceRupees: rupees,
+          planName: planCode,
+          customerEmail: null,
+          displayName: 'CET Verse',
+        ),
+      ),
+    );
 
-      // Update planType in Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userPhoneNumber)
-          .set(
-        {
-          'subscription': {'planType': planName}
-        },
-        SetOptions(merge: true),
-      );
-
-      // Update local AuthProvider
-      await authProvider.fetchUserData(userPhoneNumber);
-
+    if (result is Map && result['ok'] == true) {
+      await auth.fetchUserData(phone);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$planName plan activated successfully!')),
+        SnackBar(content: Text('$planCode plan activated successfully!')),
       );
-    } catch (e) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Purchase failed: $e')),
+        const SnackBar(content: Text('Payment not completed')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final currentPlan = authProvider.getPlanType ?? 'Starter';
+    final auth = Provider.of<AuthProvider>(context);
+    final currentPlan = auth.getPlanType ?? 'Starter';
+    final currentLevel = _levelFor(currentPlan);
+
+    // Card levels
+    const starterLevel = 0;
+    const plusLevel = 1;
+    const proLevel = 2;
+
+    // Disable logic (no downgrades)
+    final starterDisabled =
+        currentLevel > starterLevel; // Plus/Pro -> disable Starter
+    final plusDisabled = currentLevel > plusLevel; // Pro -> disable Plus
+    const proDisabled = false; // Upgrades allowed anytime
 
     return Scaffold(
       appBar: AppBar(
@@ -96,67 +161,80 @@ class PricingPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              // Starter Plan
+
+              // Starter
               PricingCard(
                 planName: 'Starter Plan',
                 price: '₹0',
                 features: const [
-                  'Limited access to MHT CET PYQs',
-                  '2 Free Mock Tests (Each Subject)',
-                  'Browse Topper Profiles (read-only)',
+                  'MHT CET PYQs Access: Limited',
+                  'Mock Tests per Subject: 1',
+                  'Topper Profiles: Read-only',
+                  'Performance Tracking: Yes',
                 ],
-                isCurrent: currentPlan == 'Starter',
-                onPurchase: () {
-                  _handlePurchase(context, 'Starter', 0);
-                },
-                buttonText:
-                    currentPlan == 'Starter' ? 'Current Plan' : 'Get Started',
+                isCurrent: currentLevel == starterLevel,
+                isDisabled: starterDisabled && currentLevel != starterLevel,
+                disabledReason: 'Downgrade not available',
+                onPurchase: () => _activateFreePlan(context),
+                buttonText: currentLevel == starterLevel
+                    ? 'Current Plan'
+                    : 'Get Started',
                 buttonColor: Colors.green,
               ),
               const SizedBox(height: 16),
-              // Plus Plan
+
+              // Plus
               PricingCard(
                 planName: 'Plus Plan',
                 price: '₹129/year',
                 features: const [
-                  'Full access to MHT CET PYQs',
-                  'Access to all Chapter-wise Notes',
-                  'Topper Notes & Profiles (with downloads)',
-                  'Full Mock Test Series',
-                  'Performance Tracking',
+                  'MHT CET PYQs Access: Unlimited',
+                  'Board PYQs: Yes',
+                  'Chapter-wise Notes: Yes',
+                  'Topper Notes Download: Yes',
+                  'Mock Tests per Subject: 2',
+                  'Full Mock Test Series: No',
+                  'Topper Profiles: Read-only',
+                  'Performance Tracking: Yes',
                 ],
-                isCurrent: currentPlan == 'Plus',
-                onPurchase: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          PaymentPage(planName: 'Plus', amount: 129),
-                    ),
-                  );
-                },
+                isCurrent: currentLevel == plusLevel,
+                isDisabled: plusDisabled && currentLevel != plusLevel,
+                disabledReason: 'Downgrade not available',
+                onPurchase: () => _startPaidPlan(
+                  context,
+                  planCode: 'Plus',
+                  rupees: 129,
+                ),
                 buttonText:
-                    currentPlan == 'Plus' ? 'Current Plan' : 'Purchase Now',
+                    currentLevel == plusLevel ? 'Current Plan' : 'Purchase Now',
                 buttonColor: Colors.blue,
               ),
               const SizedBox(height: 16),
-              // Pro Plan
+
+              // Pro
               PricingCard(
                 planName: 'Pro Plan',
                 price: '₹149/year',
                 features: const [
-                  'Everything in Plus Plan',
-                  'Solved Board PYQs (HSC Board, Handwritten)',
-                  'Priority Access to New Features',
+                  'Everything in Plus',
+                  'Board PYQs: Yes',
+                  'Full Mock Test Series: Yes',
+                  'Topper Profiles: Full Access',
+                  'Priority Features: Yes',
+                  'Performance Tracking: Yes',
                 ],
-                isCurrent: currentPlan == 'Pro',
-                onPurchase: () {
-                  _handlePurchase(context, 'Pro', 149);
-                },
+                isCurrent: currentLevel == proLevel,
+                isDisabled: proDisabled && currentLevel != proLevel,
+                onPurchase: () => _startPaidPlan(
+                  context,
+                  planCode: 'Pro',
+                  rupees: 149,
+                ),
                 buttonText:
-                    currentPlan == 'Pro' ? 'Current Plan' : 'Purchase Now',
+                    currentLevel == proLevel ? 'Current Plan' : 'Purchase Now',
                 buttonColor: Colors.purple,
               ),
+
               const SizedBox(height: 32),
               const Text(
                 'Accepted Payment Methods:',
@@ -194,6 +272,10 @@ class PricingCard extends StatelessWidget {
   final Color buttonColor;
   final bool isCurrent;
 
+  // NEW:
+  final bool isDisabled;
+  final String? disabledReason;
+
   const PricingCard({
     super.key,
     required this.planName,
@@ -203,10 +285,14 @@ class PricingCard extends StatelessWidget {
     required this.buttonText,
     required this.buttonColor,
     required this.isCurrent,
+    this.isDisabled = false,
+    this.disabledReason,
   });
 
   @override
   Widget build(BuildContext context) {
+    final disabled = isCurrent || isDisabled;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -232,106 +318,117 @@ class PricingCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  planName,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                if (isCurrent)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade700,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Current Plan',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text(
-              price,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Features:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
+              planName,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
             ),
-            const SizedBox(height: 12),
-            ...features.map((feature) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 22,
-                        color: Colors.green.shade600,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          feature,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.grey.shade800,
-                          ),
+            if (isCurrent)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade700,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Current Plan',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              )
+            else if (isDisabled && (disabledReason ?? '').isNotEmpty)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade500,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  disabledReason!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ]),
+          const SizedBox(height: 8),
+          Text(
+            price,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).primaryColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Features:',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...features.map((feature) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      size: 22,
+                      color: Colors.green.shade600,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        feature,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.grey.shade800,
                         ),
                       ),
-                    ],
-                  ),
-                )),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: isCurrent ? null : onPurchase,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isCurrent ? Colors.grey.shade400 : buttonColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                    ),
+                  ],
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 14,
-                ),
-                elevation: isCurrent ? 0 : 5,
+              )),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: disabled ? null : onPurchase,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: disabled ? Colors.grey.shade400 : buttonColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                buttonText,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 32,
+                vertical: 14,
+              ),
+              elevation: disabled ? 0 : 5,
+            ),
+            child: Text(
+              buttonText,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }

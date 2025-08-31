@@ -1,12 +1,15 @@
 import 'dart:io';
+import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/features/courses/notes/add_chapter_page.dart';
 import 'package:cet_verse/features/courses/notes/pdf_viewer_page.dart';
+import 'package:cet_verse/screens/pricing_page.dart';
 import 'package:cet_verse/ui/components/my_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:provider/provider.dart';
 
 class NotesPage extends StatefulWidget {
   final String level; // e.g., "11th Standard"
@@ -19,7 +22,7 @@ class NotesPage extends StatefulWidget {
   });
 
   @override
-  _NotesPageState createState() => _NotesPageState();
+  State<NotesPage> createState() => _NotesPageState();
 }
 
 class _NotesPageState extends State<NotesPage> {
@@ -61,6 +64,15 @@ class _NotesPageState extends State<NotesPage> {
   }
 
   Future<void> _deleteChapter(String chapterId) async {
+    final auth = context.read<AuthProvider>();
+    final isAdmin = (auth.getUserType ?? '').toLowerCase() == 'admin';
+    if (!isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only admins can delete chapters')),
+      );
+      return;
+    }
+
     try {
       await FirebaseFirestore.instance
           .collection('levels')
@@ -85,9 +97,32 @@ class _NotesPageState extends State<NotesPage> {
     }
   }
 
+  void _openNotesOrUpsell(String pdfUrl, String chapter) {
+    final auth = context.read<AuthProvider>();
+    final canSeeNotes = auth.chapterWiseNotesAccess;
+
+    if (!canSeeNotes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Notes are available on Plus/Pro plans')),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PricingPage()),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PdfViewerPage(pdfUrl: pdfUrl)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scaffoldKey = GlobalKey<ScaffoldState>();
+    final auth = context.watch<AuthProvider>();
+    final isAdmin = (auth.getUserType ?? '').toLowerCase() == 'admin';
 
     return SafeArea(
       child: Scaffold(
@@ -106,20 +141,22 @@ class _NotesPageState extends State<NotesPage> {
           elevation: 2,
           backgroundColor: Colors.white,
           actions: [
-            IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AddChapterPage(
-                      level: widget.level,
-                      subject: widget.subject,
+            if (isAdmin)
+              IconButton(
+                tooltip: 'Add Chapter',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AddChapterPage(
+                        level: widget.level,
+                        subject: widget.subject,
+                      ),
                     ),
-                  ),
-                ).then((_) => _fetchChapters());
-              },
-              icon: const Icon(Icons.add),
-            ),
+                  ).then((_) => _fetchChapters());
+                },
+                icon: const Icon(Icons.add),
+              ),
           ],
         ),
         body: _isLoading
@@ -151,7 +188,7 @@ class _NotesPageState extends State<NotesPage> {
                             itemCount: _allChapters.length,
                             itemBuilder: (context, index) {
                               final chapterId = _allChapters[index];
-                              return _buildChapterCard(chapterId);
+                              return _buildChapterCard(chapterId, isAdmin);
                             },
                           ),
                         ),
@@ -160,7 +197,7 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
-  Widget _buildChapterCard(String chapter) {
+  Widget _buildChapterCard(String chapter, bool isAdmin) {
     return Material(
       elevation: 4,
       borderRadius: BorderRadius.circular(16),
@@ -174,7 +211,7 @@ class _NotesPageState extends State<NotesPage> {
           margin: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [Colors.white, Color.fromARGB(25, 33, 149, 243)],
@@ -233,7 +270,7 @@ class _NotesPageState extends State<NotesPage> {
               return Semantics(
                 label: pdfUrl.isNotEmpty
                     ? 'View notes for $chapter'
-                    : 'No notes available for $chapter, tap upload icon to add',
+                    : 'No notes available for $chapter, ${isAdmin ? "tap upload icon to add" : "contact admin"}',
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
                   leading: Container(
@@ -251,7 +288,7 @@ class _NotesPageState extends State<NotesPage> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: pdfUrl.isEmpty
+                  trailing: (pdfUrl.isEmpty && isAdmin)
                       ? InkWell(
                           onTap: () => _uploadPdfDialog(chapter),
                           child: const Icon(Icons.cloud_upload,
@@ -260,12 +297,7 @@ class _NotesPageState extends State<NotesPage> {
                       : null,
                   onTap: () {
                     if (pdfUrl.isNotEmpty) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PdfViewerPage(pdfUrl: pdfUrl),
-                        ),
-                      );
+                      _openNotesOrUpsell(pdfUrl, chapter);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -283,6 +315,15 @@ class _NotesPageState extends State<NotesPage> {
   }
 
   void _uploadPdfDialog(String chapterId) {
+    final auth = context.read<AuthProvider>();
+    final isAdmin = (auth.getUserType ?? '').toLowerCase() == 'admin';
+    if (!isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only admins can upload notes')),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -339,10 +380,8 @@ class _UploadPdfSheetState extends State<_UploadPdfSheet> {
             ),
             const SizedBox(height: 16),
             if (_statusMessage.isNotEmpty)
-              Text(
-                _statusMessage,
-                style: const TextStyle(color: Colors.red, fontSize: 14),
-              ),
+              Text(_statusMessage,
+                  style: const TextStyle(color: Colors.red, fontSize: 14)),
             const SizedBox(height: 16),
             if (_isUploading) ...[
               LinearProgressIndicator(
@@ -386,9 +425,7 @@ class _UploadPdfSheetState extends State<_UploadPdfSheet> {
       );
 
       if (result == null || result.files.isEmpty) {
-        setState(() {
-          _isUploading = false;
-        });
+        setState(() => _isUploading = false);
         return;
       }
 
@@ -409,12 +446,10 @@ class _UploadPdfSheetState extends State<_UploadPdfSheet> {
       final uploadTask = storageRef.putFile(file);
 
       uploadTask.snapshotEvents.listen((snapshot) {
-        final totalBytes = snapshot.totalBytes;
+        final totalBytes = snapshot.totalBytes == 0 ? 1 : snapshot.totalBytes;
         final transferred = snapshot.bytesTransferred;
-        double progress = (transferred / totalBytes) * 100;
-        setState(() {
-          _uploadProgress = progress;
-        });
+        final progress = (transferred / totalBytes) * 100.0;
+        setState(() => _uploadProgress = progress);
       });
 
       final taskSnapshot = await uploadTask;
@@ -427,9 +462,9 @@ class _UploadPdfSheetState extends State<_UploadPdfSheet> {
           .doc(widget.subject)
           .collection('chapters')
           .doc(widget.chapterId)
-          .update({
-        "resources.pdf": downloadUrl,
-      });
+          .set({
+        "resources": {"pdf": downloadUrl},
+      }, SetOptions(merge: true));
 
       setState(() {
         _isUploading = false;
@@ -438,9 +473,7 @@ class _UploadPdfSheetState extends State<_UploadPdfSheet> {
 
       widget.onUploadDone();
       Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          Navigator.pop(context);
-        }
+        if (mounted) Navigator.pop(context);
       });
     } catch (e) {
       setState(() {

@@ -813,7 +813,7 @@ class _UpdatePyqMcqState extends State<UpdatePyqMcq> {
               ],
             ),
             child: DropdownButtonFormField<String>(
-              value: _selectedAnswer,
+              initialValue: _selectedAnswer,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),

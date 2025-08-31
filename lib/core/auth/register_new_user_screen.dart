@@ -3,24 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:intl/intl.dart'; // For Date Picker
+import 'package:intl/intl.dart';
 
 class RegisterNewUserScreen extends StatefulWidget {
   const RegisterNewUserScreen({super.key});
 
   @override
-  _RegisterNewUserScreenState createState() => _RegisterNewUserScreenState();
+  State<RegisterNewUserScreen> createState() => _RegisterNewUserScreenState();
 }
 
 class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _otpController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _schoolController = TextEditingController();
+
   String? _educationLevel;
   String? _board;
-  final TextEditingController _schoolController = TextEditingController();
 
   bool _isLoading = false;
   bool _isVerified = false;
@@ -28,8 +28,19 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
   String? _errorMessage;
   bool isNumberValid = false;
 
+  // 2Factor config
   final String apiKey = 'a377dfe4-53ca-11ef-8b60-0200cd936042';
   final String otpTemplateName = 'OTP1';
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _nameController.dispose();
+    _cityController.dispose();
+    _dobController.dispose();
+    _schoolController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +69,6 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
                 _buildRegisterButton(),
                 const SizedBox(height: 10),
                 _buildLoginOption(),
-                const SizedBox(height: 10),
               ],
             ),
           ),
@@ -67,6 +77,7 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
     );
   }
 
+  // UI bits
   Widget _buildHeader() {
     return ListTile(
       title: const Text(
@@ -78,29 +89,31 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
         "Fill in the details to register",
         style: TextStyle(fontSize: 16, color: Colors.grey[600]),
       ),
-      trailing: IconButton(
-          onPressed: () {
-            refresh();
-          },
-          icon: Icon(Icons.refresh)),
+      trailing:
+          IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh)),
     );
   }
 
-  void refresh() {
+  void _refresh() {
     setState(() {
       _isLoading = false;
       _isVerified = false;
       isNumberValid = false;
-      _phoneController.text = '';
-      _otpController.text = '';
-      _nameController.text = '';
-      _cityController.text = '';
-      _dobController.text = '';
+      _phoneController.clear();
+      _nameController.clear();
+      _cityController.clear();
+      _dobController.clear();
+      _schoolController.clear();
+      _educationLevel = null;
+      _board = null;
+      _otpSessionId = null;
+      _errorMessage = null;
     });
   }
 
   Widget _buildInputField(
       TextEditingController controller, String label, IconData icon) {
+    final isPhone = label.contains('Number');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextField(
@@ -110,8 +123,7 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        keyboardType:
-            label.contains('Number') ? TextInputType.phone : TextInputType.text,
+        keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
       ),
     );
   }
@@ -132,9 +144,8 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
             ),
             keyboardType: TextInputType.phone,
             onChanged: (value) {
-              setState(() {
-                isNumberValid = value.length == 10;
-              });
+              // Basic 10-digit validation; tweak if you want stricter (e.g., starts 6-9)
+              setState(() => isNumberValid = value.trim().length == 10);
             },
           ),
         ),
@@ -145,104 +156,29 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               backgroundColor: isNumberValid
-                  ? _isVerified
-                      ? Colors.green
-                      : Colors.blue
+                  ? (_isVerified ? Colors.green : Colors.blue)
                   : Colors.grey,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: isNumberValid
-                ? () => {
-                      if (_isVerified)
-                        {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Already Verified'),
-                                duration: Duration(seconds: 2)),
-                          )
-                        }
-                      else
-                        {sendOTP(context, phoneController.text)}
+                ? () {
+                    if (_isVerified) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Already Verified'),
+                            duration: Duration(seconds: 2)),
+                      );
+                    } else {
+                      sendOTP(context, phoneController.text.trim());
                     }
+                  }
                 : null,
-            child: Text(
-              _isVerified ? 'Verified' : 'Verify',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
+            child: Text(_isVerified ? 'Verified' : 'Verify',
+                style: const TextStyle(fontSize: 16, color: Colors.white)),
           ),
         ),
       ],
-    );
-  }
-
-  void _showOTPDialog(BuildContext context) {
-    List<TextEditingController> otpControllers =
-        List.generate(6, (index) => TextEditingController());
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Enter OTP'),
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              6,
-              (index) => Container(
-                width: 40,
-                height: 50,
-                margin: EdgeInsets.all(2),
-                child: TextField(
-                  controller: otpControllers[index],
-                  keyboardType: TextInputType.number,
-                  maxLength: 1,
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    counterText: "",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onChanged: (value) {
-                    if (value.isNotEmpty && index < 5) {
-                      FocusScope.of(context).nextFocus();
-                    }
-                  },
-                  onSubmitted: (value) {
-                    if (index == 5) {
-                      _verifyOTP(value);
-                    }
-                  },
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                String otpEntered = otpControllers.map((c) => c.text).join();
-                if (otpEntered.length == 6) {
-                  Navigator.of(context).pop();
-                  _verifyOTP(otpEntered);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Please enter a 6-digit OTP'),
-                        duration: Duration(seconds: 2)),
-                  );
-                }
-              },
-              child: const Text('Submit'),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -279,15 +215,16 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
         Expanded(
           flex: 2,
           child: DropdownButtonFormField<String>(
-            value: _educationLevel,
+            initialValue: _educationLevel,
             decoration: InputDecoration(
               labelText: 'Education Level',
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            items: ['10th', '12th', 'Graduate'].map((level) {
-              return DropdownMenuItem(value: level, child: Text(level));
-            }).toList(),
+            items: const ['10th', '12th', 'Graduate']
+                .map((level) =>
+                    DropdownMenuItem(value: level, child: Text(level)))
+                .toList(),
             onChanged: (value) => setState(() => _educationLevel = value),
           ),
         ),
@@ -295,15 +232,16 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
         Expanded(
           flex: 2,
           child: DropdownButtonFormField<String>(
-            value: _board,
+            initialValue: _board,
             decoration: InputDecoration(
               labelText: 'Board',
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            items: ['CBSE', 'ICSE', 'State Board'].map((board) {
-              return DropdownMenuItem(value: board, child: Text(board));
-            }).toList(),
+            items: const ['CBSE', 'ICSE', 'State Board']
+                .map((board) =>
+                    DropdownMenuItem(value: board, child: Text(board)))
+                .toList(),
             onChanged: (value) => setState(() => _board = value),
           ),
         ),
@@ -313,15 +251,21 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
 
   Widget _buildRegisterButton() {
     return ElevatedButton(
-      onPressed: _registerUser,
+      onPressed: _isLoading ? null : _registerUser,
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         backgroundColor: Colors.black,
         padding: const EdgeInsets.symmetric(vertical: 14),
       ),
-      child: const Center(
-        child: Text('Register',
-            style: TextStyle(fontSize: 18, color: Colors.white)),
+      child: Center(
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white))
+            : const Text('Register',
+                style: TextStyle(fontSize: 18, color: Colors.white)),
       ),
     );
   }
@@ -331,8 +275,7 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
       child: TextButton(
         onPressed: () {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => PhoneAuthScreen()),
-          );
+              MaterialPageRoute(builder: (_) => const PhoneAuthScreen()));
         },
         child: const Text('Already have an account? Login',
             style: TextStyle(fontSize: 16, color: Colors.blue)),
@@ -340,26 +283,92 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
     );
   }
 
-  void _pickDate() async {
-    DateTime? pickedDate = await showDatePicker(
+  // OTP dialog
+  void _showOTPDialog(BuildContext context) {
+    final otpControllers = List.generate(6, (_) => TextEditingController());
+
+    showDialog(
       context: context,
-      initialDate: DateTime.now(),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Enter OTP'),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              6,
+              (i) => Container(
+                width: 40,
+                height: 50,
+                margin: const EdgeInsets.all(2),
+                child: TextField(
+                  controller: otpControllers[i],
+                  keyboardType: TextInputType.number,
+                  maxLength: 1,
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    counterText: "",
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onChanged: (v) {
+                    if (v.isNotEmpty && i < 5) {
+                      FocusScope.of(context).nextFocus();
+                    }
+                  },
+                  onSubmitted: (v) {
+                    if (i == 5) {
+                      final otpEntered =
+                          otpControllers.map((c) => c.text).join();
+                      _verifyOTP(otpEntered);
+                    }
+                  },
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final otpEntered = otpControllers.map((c) => c.text).join();
+                if (otpEntered.length == 6) {
+                  Navigator.of(context).pop();
+                  _verifyOTP(otpEntered);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Please enter a 6-digit OTP'),
+                        duration: Duration(seconds: 2)),
+                  );
+                }
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Helpers
+  void _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2005, 1, 1),
       firstDate: DateTime(1970),
       lastDate: DateTime.now(),
     );
-
-    if (pickedDate != null) {
-      setState(() {
-        _dobController.text = DateFormat('dd/MM/yyyy').format(pickedDate);
-      });
+    if (picked != null) {
+      _dobController.text = DateFormat('dd/MM/yyyy').format(picked);
     }
   }
 
   Future<void> _verifyOTP(String otpEntered) async {
     if (_otpSessionId == null) {
-      setState(() {
-        _errorMessage = 'OTP session ID is null. Please request OTP again.';
-      });
+      setState(() =>
+          _errorMessage = 'OTP session ID is null. Please request OTP again.');
       return;
     }
 
@@ -369,27 +378,22 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse(
-            'https://2factor.in/API/V1/$apiKey/SMS/VERIFY/$_otpSessionId/$otpEntered'),
-      );
+      final resp = await http.get(Uri.parse(
+          'https://2factor.in/API/V1/$apiKey/SMS/VERIFY/$_otpSessionId/$otpEntered'));
+      final data = json.decode(resp.body);
 
-      final responseData = json.decode(response.body);
-
-      if (responseData['Status'] == 'Success') {
-        setState(() {
-          _isVerified = true;
-        });
-
+      if (data['Status'] == 'Success') {
+        setState(() => _isVerified = true);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('OTP Verified Successfully!'),
               duration: Duration(seconds: 2)),
         );
       } else {
-        setState(() {
-          _errorMessage = 'OTP verification failed. Please try again.';
-        });
+        setState(
+            () => _errorMessage = 'OTP verification failed. Please try again.');
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('OTP verification failed. Please try again.'),
@@ -397,13 +401,9 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
         );
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error verifying OTP: $e';
-      });
+      setState(() => _errorMessage = 'Error verifying OTP: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -411,51 +411,40 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Sending OTP to $phoneNumber...'),
-          duration: const Duration(seconds: 2),
-        ),
+            content: Text('Sending OTP to $phoneNumber...'),
+            duration: const Duration(seconds: 2)),
       );
 
-      final response = await http.get(
-        Uri.parse(
-            'https://2factor.in/API/V1/$apiKey/SMS/$phoneNumber/AUTOGEN/$otpTemplateName'),
-      );
+      final resp = await http.get(Uri.parse(
+          'https://2factor.in/API/V1/$apiKey/SMS/$phoneNumber/AUTOGEN/$otpTemplateName'));
 
-      print('API Response Status Code: ${response.statusCode}');
-      print('API Response Body: ${response.body}');
+      final data = json.decode(resp.body);
 
-      final responseData = json.decode(response.body);
-
-      if (responseData['Status'] == 'Success') {
+      if (data['Status'] == 'Success') {
         setState(() {
-          _otpSessionId = responseData['Details'];
+          _otpSessionId = data['Details'];
           _isLoading = false;
         });
 
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('OTP sent successfully to $phoneNumber'),
-            duration: const Duration(seconds: 2),
-          ),
+              content: Text('OTP sent successfully to $phoneNumber'),
+              duration: const Duration(seconds: 2)),
         );
 
-        Future.delayed(const Duration(seconds: 1), () {
-          _showOTPDialog(context);
-        });
+        Future.delayed(
+            const Duration(milliseconds: 600), () => _showOTPDialog(context));
       } else {
         setState(() {
-          _errorMessage =
-              'Failed to send OTP. Error: ${responseData['Details']}';
+          _errorMessage = 'Failed to send OTP. Error: ${data['Details']}';
           _isLoading = false;
         });
-
-        print('OTP API Error: ${responseData['Details']}');
-
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_errorMessage!),
-            duration: const Duration(seconds: 3),
-          ),
+              content: Text(_errorMessage!),
+              duration: const Duration(seconds: 3)),
         );
       }
     } catch (e) {
@@ -463,83 +452,86 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
         _errorMessage = 'Error sending OTP: $e';
         _isLoading = false;
       });
-
-      print('Exception Occurred: $e');
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_errorMessage!),
-          duration: const Duration(seconds: 3),
-        ),
+            content: Text(_errorMessage!),
+            duration: const Duration(seconds: 3)),
       );
     }
   }
 
-  void _registerUser() async {
+  Future<void> _registerUser() async {
     if (!_isVerified) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please verify OTP before registration'),
-          duration: Duration(seconds: 2),
-        ),
+            content: Text('Please verify OTP before registration'),
+            duration: Duration(seconds: 2)),
       );
       return;
     }
 
-    String mobileNumber = _phoneController.text.trim();
-    String fullName = _nameController.text.trim();
-    String dob = _dobController.text.trim();
-    String city = _cityController.text.trim();
-    String educationLevel = _educationLevel ?? '';
-    String board = _board ?? '';
-    String school = _schoolController.text.trim();
+    final mobileNumber = _phoneController.text.trim();
+    final fullName = _nameController.text.trim();
+    final dob = _dobController.text.trim();
+    final city = _cityController.text.trim();
+    final educationLevel = _educationLevel ?? '';
+    final board = _board ?? '';
+    final school = _schoolController.text.trim();
 
     if (fullName.isEmpty || fullName.length < 6 || !fullName.contains(" ")) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-              'Please enter full name with at least 6 characters and a space.'),
-          duration: Duration(seconds: 2),
-        ),
+            content: Text(
+                'Please enter full name with at least 6 characters and a space.'),
+            duration: Duration(seconds: 2)),
       );
       return;
     }
-
     if (dob.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter your Date of Birth.'),
-          duration: Duration(seconds: 2),
-        ),
+            content: Text('Please enter your Date of Birth.'),
+            duration: Duration(seconds: 2)),
       );
       return;
     }
-
     if (city.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter your City.'),
-          duration: Duration(seconds: 2),
-        ),
+            content: Text('Please enter your City.'),
+            duration: Duration(seconds: 2)),
       );
       return;
     }
-
     if (school.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter your School/College name.'),
-          duration: Duration(seconds: 2),
-        ),
+            content: Text('Please enter your School/College name.'),
+            duration: Duration(seconds: 2)),
       );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
+      // Prevent duplicate registration
+      final exists = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(mobileNumber)
+          .get();
+      if (exists.exists) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Mobile already registered. Please login.'),
+              duration: Duration(seconds: 2)),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(mobileNumber)
@@ -551,49 +543,62 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen> {
         'board': board,
         'school': school,
         'createdAt': FieldValue.serverTimestamp(),
-        'userType': "student",
+        'userType': "Student",
+
+        // ---- Starter subscription & features ----
         'subscription': {
           'planType': 'Starter',
           'status': 'active',
           'startDate': FieldValue.serverTimestamp(),
           'endDate': null,
-          'paymentMethod': null,
+          'paymentMethod': 'none',
           'amountPaid': 0,
-          'features': {
-            'mhtCetPyqsAccess': 'limited',
-            'mockTestsPerSubject': 2,
-            'topperProfilesAccess': 'read-only',
-            'chapterWiseNotesAccess': false,
-            'topperNotesDownload': false,
-            'fullMockTestSeries': false,
-            'performanceTracking': false,
-            'boardPyqsAccess': false,
-            'priorityFeatureAccess': false,
-          },
+        },
+        'features': {
+          'mhtCetPyqsAccess': 'limited',
+          'boardPyqsAccess': false,
+          'chapterWiseNotesAccess': false,
+          'topperNotesDownload': false,
+          'mockTestsPerSubject': 1, // Starter rule
+          'fullMockTestSeries': false,
+          'topperProfilesAccess': 'read-only',
+          'performanceTracking': true, // Starter rule
+          'priorityFeatureAccess': false,
+        },
+
+        // ---- stats containers ----
+        'user solve questions': {
+          'physics': 0,
+          'chemistry': 0,
+          'maths': 0,
+          'biology': 0
+        },
+        'total solve questions': {
+          'physics': 0,
+          'chemistry': 0,
+          'maths': 0,
+          'biology': 0
         },
       });
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Registration Successful!'),
-          duration: Duration(seconds: 2),
-        ),
+            content: Text('Registration Successful!'),
+            duration: Duration(seconds: 2)),
       );
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => PhoneAuthScreen()),
-      );
+          MaterialPageRoute(builder: (_) => const PhoneAuthScreen()));
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error registering user: $e'),
-          duration: Duration(seconds: 3),
-        ),
+            content: Text('Error registering user: $e'),
+            duration: const Duration(seconds: 5)),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 }

@@ -180,7 +180,7 @@ class _TestTakingPageState extends State<TestTakingPage> {
                 leading: const Icon(Icons.lock_clock_outlined,
                     color: Colors.blueAccent),
                 title: const Text('Time Left:'),
-                trailing: Text('$timeLeft'),
+                trailing: Text(timeLeft),
               ),
             ],
           ),

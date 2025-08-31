@@ -821,7 +821,7 @@ class _UpdateMCQState extends State<UpdateMCQ> {
               ],
             ),
             child: DropdownButtonFormField<String>(
-              value: _selectedAnswer,
+              initialValue: _selectedAnswer,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),

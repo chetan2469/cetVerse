@@ -1,7 +1,6 @@
 // PyqQuestionCard.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_tex/flutter_tex.dart';
-import 'package:cet_verse/ui/theme/constants.dart';
 
 class PyqQuestionCard extends StatelessWidget {
   final int index;

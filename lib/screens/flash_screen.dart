@@ -63,8 +63,8 @@ class _FlashScreenState extends State<FlashScreen> {
     try {
       // Get device's phone number
       String? phoneNumber = await GetPhoneNumber().get();
-      phoneNumber = phoneNumber?.replaceAll("91", "").trim();
-      phoneNumber = phoneNumber?.replaceAll("+", "").trim();
+      phoneNumber = phoneNumber.replaceAll("91", "").trim();
+      phoneNumber = phoneNumber.replaceAll("+", "").trim();
       print("Detected Mobile Number: $phoneNumber");
 
       // Check if user exists in Firestore
@@ -75,7 +75,7 @@ class _FlashScreenState extends State<FlashScreen> {
 
       if (userDoc.exists) {
         // User exists → Fetch data and navigate to Dashboard
-        await authProvider.fetchUserData(phoneNumber!);
+        await authProvider.fetchUserData(phoneNumber);
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => DashboardPage()),
         );

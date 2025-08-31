@@ -13,13 +13,16 @@ void main() async {
     await TeXRenderingServer.start();
   }
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    debugPrint('Firebase initialization error: $e');
-  }
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  // try {
+  //   await Firebase.initializeApp(
+  //     options: DefaultFirebaseOptions.currentPlatform,
+  //   );
+  // } catch (e) {
+  //   debugPrint('Firebase initialization error: $e');
+  // }
 
   runApp(const MyApp());
 }
@@ -54,7 +57,6 @@ class MyApp extends StatelessWidget {
             primarySwatch: Colors.blue,
           ),
           home: const FlashScreen()),
-      //home: TeXViewSimplified(latexContent),
       //home: TeXViewQuizExample()),
     );
   }

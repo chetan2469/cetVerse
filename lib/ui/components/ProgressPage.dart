@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:intl/intl.dart';
@@ -941,7 +940,7 @@ class _ProgressPageState extends State<ProgressPage>
                   ),
                 ),
               );
-            }).toList(),
+            }),
             const SizedBox(height: 16),
 
             // Subject-wise Analytics Cards
@@ -999,7 +998,7 @@ class _ProgressPageState extends State<ProgressPage>
                   ),
                 ),
               );
-            }).toList(),
+            }),
             const SizedBox(height: 16),
 
             // Recent Tests Table

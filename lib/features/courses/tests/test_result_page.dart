@@ -505,7 +505,7 @@ class _TestResultPageState extends State<TestResultPage> {
                         Icons.star,
                       ),
                       _buildStatCard(
-                        '${widget.timeTaken}',
+                        widget.timeTaken,
                         'Time Left',
                         Colors.purple,
                         Icons.timer,
@@ -561,7 +561,7 @@ class _TestResultPageState extends State<TestResultPage> {
                                 _canViewResultInDetail = value;
                               });
                             },
-                            activeColor: Colors.blue,
+                            activeThumbColor: Colors.blue,
                             inactiveThumbColor: Colors.grey,
                           ),
                         ),

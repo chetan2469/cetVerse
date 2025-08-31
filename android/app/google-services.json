@@ -12,7 +12,16 @@
           "package_name": "cet.com.cet_verse"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "584431418912-tjaescfjoc3i5rkb1upgfst8kmdmiimp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "cet.com.cet_verse",
+            "certificate_hash": "be3ce0ea24ed96011121c984148ad6ec54907242"
+          }
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC71xR1K1zjePN5Z8rB6MMTVGhQk3Vk60s"

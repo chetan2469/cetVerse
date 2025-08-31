@@ -29,8 +29,8 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   Future<void> _getDevicePhoneNumber() async {
     try {
       String? phoneNumber = await GetPhoneNumber().get();
-      phoneNumber = phoneNumber?.replaceAll("91", "").trim();
-      phoneNumber = phoneNumber?.replaceAll("+", "").trim();
+      phoneNumber = phoneNumber.replaceAll("91", "").trim();
+      phoneNumber = phoneNumber.replaceAll("+", "").trim();
       setState(() {
         _phoneController.text = phoneNumber ?? '';
       });

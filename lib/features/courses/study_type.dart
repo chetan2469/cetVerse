@@ -1,7 +1,12 @@
 import 'package:cet_verse/features/courses/chapters.dart';
 import 'package:cet_verse/features/courses/notes/notes_page.dart';
+import 'package:cet_verse/screens/pricing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
+
+// NEW
+import 'package:cet_verse/core/auth/AuthProvider.dart';
+import 'package:provider/provider.dart';
 
 class StudyType extends StatefulWidget {
   final String level;
@@ -14,17 +19,33 @@ class StudyType extends StatefulWidget {
   });
 
   @override
-  _StudyTypeState createState() => _StudyTypeState();
+  State<StudyType> createState() => _StudyTypeState();
 }
 
 class _StudyTypeState extends State<StudyType> {
   Future<void> _refresh() async {
-    setState(() {}); // Rebuilds the UI
-    // Add dynamic data fetching here if needed (e.g., Firestore queries)
+    setState(() {}); // Rebuild UI; hook Firestore if needed
+  }
+
+  void _upsell(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const PricingPage()));
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    // Gates
+    final notesAllowed = auth.chapterWiseNotesAccess; // Plus/Pro
+    final testsAllowed = auth.fullMockTestSeries ||
+        auth.mockTestsPerSubject > 0; // Pro or Starter/Plus (N>0)
+
+    final testsFooter = auth.fullMockTestSeries
+        ? 'Unlimited tests (Pro)'
+        : 'First ${auth.mockTestsPerSubject} tests available';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -36,7 +57,7 @@ class _StudyTypeState extends State<StudyType> {
               child: RefreshIndicator(
                 onRefresh: _refresh,
                 backgroundColor: Colors.white,
-                color: Colors.indigoAccent, // Matches theme
+                color: Colors.indigoAccent,
                 strokeWidth: 3.0,
                 displacement: 40.0,
                 child: SingleChildScrollView(
@@ -54,15 +75,22 @@ class _StudyTypeState extends State<StudyType> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
+
+                      // MOCK TEST
                       _buildOptionCard(
                         context,
                         icon: Icons.list_alt_outlined,
                         title: "Mock Test",
                         description:
                             "Attempt full-length PYQ Tests or chapter-wise tests.\nTrack your progress & scores!",
-                        color1: Colors.white,
-                        color2: Colors.white,
+                        footer: testsFooter,
+                        locked: !testsAllowed,
                         onTap: () {
+                          if (!testsAllowed) {
+                            _upsell(context,
+                                'Mock tests are available on Plus/Pro plans');
+                            return;
+                          }
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -74,16 +102,25 @@ class _StudyTypeState extends State<StudyType> {
                           );
                         },
                       ),
+
                       const SizedBox(height: 24),
+
+                      // NOTES
                       _buildOptionCard(
                         context,
                         icon: Icons.menu_book_rounded,
                         title: "Notes",
                         description:
                             "Access study materials, summaries,\nand important formula sheets.",
-                        color1: Colors.white,
-                        color2: Colors.white,
+                        footer:
+                            notesAllowed ? 'Available' : 'Locked (Plus/Pro)',
+                        locked: !notesAllowed,
                         onTap: () {
+                          if (!notesAllowed) {
+                            _upsell(context,
+                                'Notes are available on Plus/Pro plans');
+                            return;
+                          }
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -126,9 +163,9 @@ class _StudyTypeState extends State<StudyType> {
     required IconData icon,
     required String title,
     required String description,
-    required Color color1,
-    required Color color2,
     required VoidCallback onTap,
+    bool locked = false,
+    String? footer,
   }) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -139,8 +176,8 @@ class _StudyTypeState extends State<StudyType> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [color1, color2],
+          gradient: const LinearGradient(
+            colors: [Colors.white, Colors.white],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -151,10 +188,23 @@ class _StudyTypeState extends State<StudyType> {
               offset: const Offset(0, 4),
             ),
           ],
+          border:
+              locked ? Border.all(color: Colors.red.withOpacity(0.4)) : null,
         ),
         child: Column(
           children: [
-            Icon(icon, color: const Color.fromARGB(255, 33, 32, 32), size: 48),
+            Stack(
+              children: [
+                Icon(icon,
+                    color: const Color.fromARGB(255, 33, 32, 32), size: 48),
+                if (locked)
+                  const Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Icon(Icons.lock, size: 20, color: Colors.red),
+                  ),
+              ],
+            ),
             const SizedBox(height: 16),
             Text(
               title,
@@ -173,6 +223,18 @@ class _StudyTypeState extends State<StudyType> {
               ),
               textAlign: TextAlign.center,
             ),
+            if (footer != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                footer,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: locked ? Colors.red : Colors.grey.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         ),
       ),

@@ -18,13 +18,12 @@ class ChapterWiseTest extends StatefulWidget {
   });
 
   @override
-  _ChapterWiseTestState createState() => _ChapterWiseTestState();
+  State<ChapterWiseTest> createState() => _ChapterWiseTestState();
 }
 
 class _ChapterWiseTestState extends State<ChapterWiseTest> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _allMcqs = [];
-  bool _hasFullAccess = false;
 
   @override
   void initState() {
@@ -35,50 +34,19 @@ class _ChapterWiseTestState extends State<ChapterWiseTest> {
   Future<void> _initializeData() async {
     try {
       await _fetchMcqs();
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final phoneNumber = authProvider.userPhoneNumber;
-      if (phoneNumber == null) {
-        throw Exception("User phone number is not available");
-      }
-
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(phoneNumber)
-          .get();
-
-      if (userDoc.exists) {
-        final userData = userDoc.data() as Map<String, dynamic>;
-        final userType = userData['userType'] as String?;
-        final subscription = userData['subscription'] as Map<String, dynamic>?;
-        final planType =
-            subscription != null ? subscription['planType'] as String? : null;
-
-        setState(() {
-          _hasFullAccess = userType == 'Admin' || planType == 'Subscribed';
-        });
-
-        authProvider.userType = userType;
-        authProvider.planType = planType;
-        authProvider.notifyListeners();
-      } else {
-        throw Exception("User data not found");
-      }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error initializing data: $e")),
       );
-      setState(() {
-        _isLoading = false;
-      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _fetchMcqs() async {
+    setState(() => _isLoading = true);
     try {
-      setState(() {
-        _isLoading = true; // Show loading during fetch
-      });
-
       final snapshot = await FirebaseFirestore.instance
           .collection('levels')
           .doc(widget.level)
@@ -92,66 +60,60 @@ class _ChapterWiseTestState extends State<ChapterWiseTest> {
       setState(() {
         _allMcqs = snapshot.docs.map((doc) {
           final data = doc.data();
-          return {
-            ...data,
-            'docId': doc.id,
-          };
+          return {...data, 'docId': doc.id};
         }).toList();
-        _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error loading MCQs: $e")),
       );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _refresh() async {
-    try {
-      await _fetchMcqs(); // Reload MCQs
-      await _initializeData(); // Reload user access status
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error refreshing: $e")),
-      );
-    }
+    await _fetchMcqs();
   }
 
+  // Split MCQs into tests of 20 each
   List<List<Map<String, dynamic>>> _groupMcqsIntoTests() {
     const int testSize = 20;
-    List<List<Map<String, dynamic>>> tests = [];
+    final tests = <List<Map<String, dynamic>>>[];
     for (int i = 0; i < _allMcqs.length; i += testSize) {
-      tests.add(_allMcqs.sublist(
-          i, i + testSize > _allMcqs.length ? _allMcqs.length : i + testSize));
+      tests.add(_allMcqs.sublist(i,
+          (i + testSize > _allMcqs.length) ? _allMcqs.length : i + testSize));
     }
     return tests;
   }
 
-  bool _isTestAccessible(int testIndex) {
-    if (testIndex == 0) return true;
-    return _hasFullAccess;
+  bool _isTestAccessible(BuildContext context, int testIndexZeroBased) {
+    final auth = context.read<AuthProvider>();
+    if (auth.fullMockTestSeries) return true; // Pro = unlimited
+    // Starter/Plus: only first N tests allowed (N = mockTestsPerSubject)
+    final max = auth.mockTestsPerSubject; // Starter=1, Plus=2
+    return testIndexZeroBased < max;
   }
 
-  Widget _buildTestTrailingIcon(int testIndex) {
-    if (!_isTestAccessible(testIndex)) {
-      return Image.asset("assets/crown.png"); // Replace Icon with Image.asset
+  Widget _buildTestLeadingIcon(BuildContext context, int testIndexZeroBased) {
+    final locked = !_isTestAccessible(context, testIndexZeroBased);
+    if (locked) {
+      return Image.asset("assets/crown.png",
+          width: 24, height: 24, fit: BoxFit.contain);
     }
-    return const Icon(Icons.auto_fix_high, size: 16);
+    return const Icon(Icons.auto_fix_high, size: 20);
   }
 
-  void _handleTestTap(int testIndex, List<Map<String, dynamic>> testMcqs) {
-    if (!_isTestAccessible(testIndex)) {
+  void _handleTestTap(BuildContext context, int testIndexZeroBased,
+      List<Map<String, dynamic>> testMcqs) {
+    if (!_isTestAccessible(context, testIndexZeroBased)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Upgrade to Premium or Admin access required"),
-        ),
+            content: Text("Upgrade plan to unlock more chapter-wise tests")),
       );
       return;
     }
-
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -159,7 +121,7 @@ class _ChapterWiseTestState extends State<ChapterWiseTest> {
           level: widget.level,
           subject: widget.subject,
           chapter: widget.chapter,
-          testNumber: testIndex + 1,
+          testNumber: testIndexZeroBased + 1,
           mcqs: testMcqs,
         ),
       ),
@@ -169,12 +131,17 @@ class _ChapterWiseTestState extends State<ChapterWiseTest> {
   @override
   Widget build(BuildContext context) {
     final tests = _groupMcqsIntoTests();
-    final authProvider = Provider.of<AuthProvider>(context);
+    final auth = context.watch<AuthProvider>(); // to reflect plan changes live
+
     final displayLevel = widget.level == '12th Standard'
         ? 'Class 12'
         : widget.level == '11th Standard'
             ? 'Class 11'
             : widget.level;
+
+    final subtitleText = auth.fullMockTestSeries
+        ? 'Unlimited tests (Pro)'
+        : 'First ${auth.mockTestsPerSubject} tests available';
 
     return Scaffold(
       appBar: AppBar(
@@ -187,15 +154,11 @@ class _ChapterWiseTestState extends State<ChapterWiseTest> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : tests.isEmpty
-              ? const Center(
-                  child: Text(
-                    "No tests available.",
-                  ),
-                )
+              ? const Center(child: Text("No tests available."))
               : RefreshIndicator(
                   onRefresh: _refresh,
                   backgroundColor: Colors.white,
-                  color: Colors.indigoAccent, // Matches app theme
+                  color: Colors.indigoAccent,
                   strokeWidth: 3.0,
                   displacement: 40.0,
                   child: Padding(
@@ -203,13 +166,22 @@ class _ChapterWiseTestState extends State<ChapterWiseTest> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              bottom: 8.0, left: 4.0, right: 4.0),
+                          child: Text(
+                            subtitleText,
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
                         Expanded(
                           child: ListView.builder(
                             physics: const BouncingScrollPhysics(),
                             itemCount: tests.length,
                             itemBuilder: (context, index) {
                               final testMcqs = tests[index];
-                              final isAccessible = _isTestAccessible(index);
+                              final locked = !_isTestAccessible(context, index);
 
                               return Card(
                                 elevation: 4,
@@ -220,14 +192,19 @@ class _ChapterWiseTestState extends State<ChapterWiseTest> {
                                   contentPadding: const EdgeInsets.all(12),
                                   title: Text(
                                     "Mock Test ${index + 1}",
-                                    style: AppTheme.subheadingStyle.copyWith(
-                                      fontSize: 16,
-                                    ),
+                                    style: AppTheme.subheadingStyle
+                                        .copyWith(fontSize: 16),
                                   ),
-                                  leading: _buildTestTrailingIcon(index),
+                                  leading:
+                                      _buildTestLeadingIcon(context, index),
                                   trailing: Text(
                                       "${testMcqs.length} Que | ${testMcqs.length} mark"),
-                                  onTap: () => _handleTestTap(index, testMcqs),
+                                  onTap: () =>
+                                      _handleTestTap(context, index, testMcqs),
+                                  subtitle: locked
+                                      ? const Text('Locked — Upgrade to access',
+                                          style: TextStyle(color: Colors.red))
+                                      : null,
                                 ),
                               );
                             },

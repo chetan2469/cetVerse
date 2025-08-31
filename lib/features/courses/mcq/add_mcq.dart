@@ -491,7 +491,7 @@ class _AddMCQState extends State<AddMCQ> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _selectedAnswer,
+            initialValue: _selectedAnswer,
             decoration: const InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.all(Radius.circular(12)),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cet_verse/ui/theme/constants.dart';
 
 class MockTestSideBar extends StatelessWidget {
   final List<int> userAnswers;
