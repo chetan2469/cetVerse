@@ -2,34 +2,52 @@ import 'package:cet_verse/features/courses/mcq/add_mcq.dart';
 import 'package:cet_verse/features/courses/mcq/display_mcq.dart';
 import 'package:cet_verse/features/courses/mcq/update_mcq.dart';
 import 'package:cet_verse/ui/components/my_drawer.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 
 class ChapterWiseMcq extends StatefulWidget {
   final String level; // e.g. "11th Standard"
   final String subject; // e.g. "Biology"
   final String chapter; // e.g. "Diversity in Organisms"
 
-  const ChapterWiseMcq(
-      {super.key,
-      required this.level,
-      required this.subject,
-      required this.chapter});
+  const ChapterWiseMcq({
+    super.key,
+    required this.level,
+    required this.subject,
+    required this.chapter,
+  });
 
   @override
-  _ChapterWiseMcqState createState() => _ChapterWiseMcqState();
+  State<ChapterWiseMcq> createState() => _ChapterWiseMcqState();
 }
 
 class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
   bool _isLoading = true;
-  List<Map<String, dynamic>> _allMcqs = [];
   bool _isUploading = false;
   double _uploadProgress = 0.0;
   String? _uploadErrorMessage;
+
+  List<Map<String, dynamic>> _allMcqs = [];
+
+  // Selection state
+  bool _selectionMode = false;
+  final Set<String> _selectedIds = <String>{};
+
+  CollectionReference<Map<String, dynamic>> get _mcqCollection =>
+      FirebaseFirestore.instance
+          .collection('levels')
+          .doc(widget.level)
+          .collection('subjects')
+          .doc(widget.subject)
+          .collection('chapters')
+          .doc(widget.chapter)
+          .collection('mcqs');
 
   @override
   void initState() {
@@ -37,39 +55,27 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
     _fetchMcqs();
   }
 
-  /// Fetch all MCQs from Firestore for the given level/subject/chapter
   Future<void> _fetchMcqs() async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('levels')
-          .doc(widget.level)
-          .collection('subjects')
-          .doc(widget.subject)
-          .collection('chapters')
-          .doc(widget.chapter)
-          .collection('mcqs')
-          .get();
-
-      setState(() {
-        _allMcqs = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {
-            ...data,
-            'docId': doc.id,
-          };
-        }).toList();
-        _isLoading = false;
-      });
+      final snapshot = await _mcqCollection.get();
+      final list =
+          snapshot.docs.map((doc) => {...doc.data(), 'docId': doc.id}).toList();
+      if (mounted) {
+        setState(() {
+          _allMcqs = list;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error loading MCQs: $e")),
+        SnackBar(content: Text('Error loading MCQs: $e')),
       );
     }
   }
 
+  // ---------- Upload JSON (unchanged behavior, with minor guards) ----------
   Future<Map<String, dynamic>> _validateJson(String jsonString) async {
     try {
       final List<dynamic> jsonData = jsonDecode(jsonString);
@@ -77,12 +83,11 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
       if (jsonData.isEmpty) {
         return {
           'success': false,
-          'error': 'JSON array is empty. Must contain at least one MCQ.',
+          'error': 'JSON array is empty. Must contain at least one MCQ.'
         };
       }
 
       final List<String> errorMessages = [];
-
       for (var i = 0; i < jsonData.length; i++) {
         final item = jsonData[i];
         if (item is! Map<String, dynamic>) {
@@ -92,50 +97,48 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
         }
 
         final requiredFields = ['question', 'options', 'answer', 'explanation'];
-        final missingFields =
-            requiredFields.where((field) => !item.containsKey(field)).toList();
-        if (missingFields.isNotEmpty) {
-          errorMessages.add(
-              'Element ${i + 1} is missing fields: ${missingFields.join(', ')}.');
+        final missing =
+            requiredFields.where((f) => !item.containsKey(f)).toList();
+        if (missing.isNotEmpty) {
+          errorMessages.add('Element ${i + 1} missing: ${missing.join(', ')}.');
         }
 
         if (item['question'] is! Map<String, dynamic> ||
             !item['question'].containsKey('text') ||
             !item['question'].containsKey('image')) {
           errorMessages.add(
-              'Element ${i + 1} has invalid question format. Must have "text" and "image".');
+              'Element ${i + 1} question invalid. Must have "text" and "image".');
         }
 
         if (item['options'] is! Map<String, dynamic> ||
             !['A', 'B', 'C', 'D']
                 .every((opt) => item['options'].containsKey(opt))) {
-          errorMessages.add(
-              'Element ${i + 1} has invalid options format. Must have "A", "B", "C", "D".');
+          errorMessages
+              .add('Element ${i + 1} options invalid. Must have A, B, C, D.');
         } else {
-          for (var opt in ['A', 'B', 'C', 'D']) {
+          for (final opt in ['A', 'B', 'C', 'D']) {
             final option = item['options'][opt];
             if (option is! Map<String, dynamic> ||
                 !option.containsKey('text') ||
                 !option.containsKey('image')) {
               errorMessages.add(
-                  'Element ${i + 1} option $opt invalid. Must have "text" and "image".');
+                  'Element ${i + 1} option $opt invalid. Needs "text" and "image".');
             }
           }
         }
 
         if (!['A', 'B', 'C', 'D'].contains(item['answer'])) {
           errorMessages.add(
-              'Element ${i + 1} has invalid answer. Must be "A", "B", "C", or "D".');
+              'Element ${i + 1} answer invalid. Must be "A", "B", "C", or "D".');
         }
 
         if (item['explanation'] is! Map<String, dynamic> ||
             !item['explanation'].containsKey('text') ||
             !item['explanation'].containsKey('image')) {
           errorMessages.add(
-              'Element ${i + 1} has invalid explanation format. Must have "text" and "image".');
+              'Element ${i + 1} explanation invalid. Needs "text" and "image".');
         }
 
-        // Subject and origin are optional, but if present, check types
         if (item.containsKey('subject') && item['subject'] is! String) {
           errorMessages.add('Element ${i + 1} subject must be a string.');
         }
@@ -145,56 +148,42 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
       }
 
       if (errorMessages.isNotEmpty) {
-        return {
-          'success': false,
-          'error': errorMessages.take(5).join('\n') +
-              (errorMessages.length > 5 ? '\n...' : ''),
-        };
+        final msg = errorMessages.take(5).join('\n') +
+            (errorMessages.length > 5 ? '\n...' : '');
+        return {'success': false, 'error': msg};
       }
-
-      return {
-        'success': true,
-        'data': jsonData,
-      };
+      return {'success': true, 'data': jsonData};
     } catch (e) {
       return {
         'success': false,
-        'error': 'Invalid JSON format: $e. Must be an array of MCQ objects.',
+        'error': 'Invalid JSON format: $e. Must be an array of MCQ objects.'
       };
     }
   }
 
   Future<void> _uploadMcqs(List<dynamic> jsonData) async {
     try {
-      final collectionRef = FirebaseFirestore.instance
-          .collection('levels')
-          .doc(widget.level)
-          .collection('subjects')
-          .doc(widget.subject)
-          .collection('chapters')
-          .doc(widget.chapter)
-          .collection('mcqs');
-
       int processed = 0;
-      for (var item in jsonData) {
-        await collectionRef.add(item);
+      for (final item in jsonData) {
+        await _mcqCollection.add(item);
         processed++;
-        setState(() {
-          _uploadProgress = processed / jsonData.length;
-        });
+        if (mounted) {
+          setState(() => _uploadProgress = processed / jsonData.length);
+        }
       }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('MCQs uploaded successfully!')),
       );
-      _fetchMcqs();
+      await _fetchMcqs();
     } catch (e) {
-      setState(() {
-        _uploadErrorMessage = 'Error uploading MCQs: $e';
-      });
+      if (!mounted) return;
+      setState(() => _uploadErrorMessage = 'Error uploading MCQs: $e');
     }
   }
 
   Future<void> _pickAndUploadJson() async {
+    if (!mounted) return;
     setState(() {
       _isUploading = true;
       _uploadErrorMessage = null;
@@ -202,12 +191,14 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
     });
 
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['json'],
+        allowedExtensions: const ['json'],
       );
 
-      if (result == null || result.files.isEmpty) {
+      if (result == null ||
+          result.files.isEmpty ||
+          result.files.single.path == null) {
         setState(() {
           _uploadErrorMessage = 'No file selected.';
           _isUploading = false;
@@ -219,9 +210,9 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
       final jsonString = await file.readAsString();
 
       final validationResult = await _validateJson(jsonString);
-      if (!validationResult['success']) {
+      if (validationResult['success'] != true) {
         setState(() {
-          _uploadErrorMessage = validationResult['error'];
+          _uploadErrorMessage = validationResult['error'] as String?;
           _isUploading = false;
         });
         return;
@@ -229,30 +220,121 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
 
       await _uploadMcqs(validationResult['data'] as List<dynamic>);
     } catch (e) {
-      setState(() {
-        _uploadErrorMessage = 'Error processing file: $e';
-      });
+      if (!mounted) return;
+      setState(() => _uploadErrorMessage = 'Error processing file: $e');
     } finally {
-      setState(() {
-        _isUploading = false;
-        _uploadProgress = 0.0;
-      });
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadProgress = 0.0;
+        });
+      }
     }
   }
 
+  // ---------- Selection helpers ----------
+  void _enterSelectionMode([String? id]) {
+    setState(() {
+      _selectionMode = true;
+      if (id != null) _selectedIds.add(id);
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _selectionMode = false;
+      _selectedIds.clear();
+    });
+  }
+
+  void _toggleSelected(String id, bool value) {
+    setState(() {
+      if (value) {
+        _selectedIds.add(id);
+      } else {
+        _selectedIds.remove(id);
+      }
+      if (_selectedIds.isEmpty) _selectionMode = false;
+    });
+  }
+
+  void _selectAll() {
+    setState(() {
+      _selectionMode = true;
+      _selectedIds
+        ..clear()
+        ..addAll(_allMcqs.map((e) => e['docId'] as String));
+    });
+  }
+
+  // ---------- Delete logic ----------
+  Future<void> _deleteSelected() async {
+    if (_selectedIds.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete MCQs'),
+        content: Text(
+            'Delete ${_selectedIds.length} selected MCQ(s)? This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      for (final id in _selectedIds) {
+        batch.delete(_mcqCollection.doc(id));
+      }
+      await batch.commit();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${_selectedIds.length} MCQ(s) deleted.')),
+      );
+      _exitSelectionMode();
+      await _fetchMcqs();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _deleteSingle(String docId) async {
+    setState(() {
+      _selectionMode = true;
+      _selectedIds
+        ..clear()
+        ..add(docId);
+    });
+    await _deleteSelected();
+  }
+
+  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
-    final scaffoldKey = GlobalKey<ScaffoldState>();
-
     return SafeArea(
       child: Scaffold(
-        key: scaffoldKey,
+        key: _scaffoldKey,
         drawer: const MyDrawer(),
         backgroundColor: AppTheme.scaffoldBackground,
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
+            onPressed: _selectionMode
+                ? _exitSelectionMode
+                : () => Navigator.pop(context),
           ),
           title: Text(
             "${widget.chapter} MCQs",
@@ -261,27 +343,40 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
           backgroundColor: Colors.white,
           elevation: 1,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.add, color: Colors.black),
-              tooltip: "Add New MCQ",
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AddMCQ(
-                      level: widget.level,
-                      subject: widget.subject,
-                      chapter: widget.chapter,
+            if (_selectionMode) ...[
+              IconButton(
+                tooltip: 'Select All',
+                onPressed: _selectAll,
+                icon: const Icon(Icons.done_all, color: Colors.black),
+              ),
+              IconButton(
+                tooltip: 'Delete Selected',
+                onPressed: _deleteSelected,
+                icon: const Icon(Icons.delete, color: Colors.red),
+              ),
+            ] else ...[
+              IconButton(
+                icon: const Icon(Icons.add, color: Colors.black),
+                tooltip: 'Add New MCQ',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AddMCQ(
+                        level: widget.level,
+                        subject: widget.subject,
+                        chapter: widget.chapter,
+                      ),
                     ),
-                  ),
-                ).then((_) => _fetchMcqs()); // Reload after adding MCQ
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.upload_file, color: Colors.black),
-              tooltip: "Upload JSON MCQs",
-              onPressed: _isUploading ? null : _pickAndUploadJson,
-            ),
+                  ).then((_) => _fetchMcqs());
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.upload_file, color: Colors.black),
+                tooltip: 'Upload JSON MCQs',
+                onPressed: _isUploading ? null : _pickAndUploadJson,
+              ),
+            ],
           ],
         ),
         body: _isLoading
@@ -289,11 +384,8 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
             : _allMcqs.isEmpty
                 ? const Center(
                     child: Text(
-                      "No MCQs found.",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
+                      'No MCQs found.',
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   )
                 : Padding(
@@ -304,9 +396,7 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
                           Column(
                             children: [
                               LinearProgressIndicator(
-                                value: _uploadProgress,
-                                minHeight: 4,
-                              ),
+                                  value: _uploadProgress, minHeight: 4),
                               const SizedBox(height: 8),
                               Text(
                                 'Uploading: ${(_uploadProgress * 100).toStringAsFixed(0)}%',
@@ -327,8 +417,10 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
                             physics: const BouncingScrollPhysics(),
                             itemCount: _allMcqs.length,
                             itemBuilder: (context, index) {
-                              final mcqData = _allMcqs[index];
-                              return _buildMCQPreviewCard(mcqData, index + 1);
+                              final mcq = _allMcqs[index];
+                              final docId = mcq['docId'] as String;
+                              return _buildMCQPreviewCard(
+                                  mcq, index + 1, docId);
                             },
                           ),
                         ),
@@ -339,73 +431,101 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
     );
   }
 
-  /// Builds a preview card for each MCQ
-  Widget _buildMCQPreviewCard(Map<String, dynamic> mcq, int number) {
-    final questionMap = mcq['question'] as Map<String, dynamic>? ?? {};
-    final String questionText = questionMap['text'] ?? "";
-    final docId = mcq['docId'] as String;
+  Widget _buildMCQPreviewCard(
+      Map<String, dynamic> mcq, int number, String docId) {
+    final questionMap = (mcq['question'] as Map<String, dynamic>?) ?? const {};
+    final questionText = (questionMap['text'] as String?) ?? '';
+
+    final checked = _selectedIds.contains(docId);
 
     return Card(
+      key: ValueKey(docId),
       elevation: 4,
       color: Colors.white,
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Q$number.",
-                  style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      tooltip: "Edit MCQ",
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => UpdateMCQ(
-                              level: widget.level,
-                              subject: widget.subject,
-                              chapter: widget.chapter,
-                              mcq: mcq,
-                              docId: docId,
-                            ),
-                          ),
-                        ).then((_) => _fetchMcqs());
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.visibility),
-                      tooltip: "View MCQ",
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => DisplayMcq(mcq: mcq),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              questionText,
-              style: AppTheme.subheadingStyle.copyWith(fontSize: 14),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+      child: InkWell(
+        onLongPress: () => _enterSelectionMode(docId),
+        onTap: () {
+          if (_selectionMode) {
+            _toggleSelected(docId, !checked);
+          } else {
+            // Open view page (old behavior)
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => DisplayMcq(mcq: mcq)),
+            );
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: Q no. + actions / checkbox
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Q$number.',
+                    style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
+                  ),
+                  Row(
+                    children: [
+                      if (_selectionMode)
+                        Checkbox(
+                          value: checked,
+                          onChanged: (v) => _toggleSelected(docId, v ?? false),
+                        )
+                      else ...[
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          tooltip: 'Edit MCQ',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => UpdateMCQ(
+                                  level: widget.level,
+                                  subject: widget.subject,
+                                  chapter: widget.chapter,
+                                  mcq: mcq,
+                                  docId: docId,
+                                ),
+                              ),
+                            ).then((_) => _fetchMcqs());
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.visibility),
+                          tooltip: 'View MCQ',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => DisplayMcq(mcq: mcq)),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          tooltip: 'Delete MCQ',
+                          onPressed: () => _deleteSingle(docId),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                questionText,
+                style: AppTheme.subheadingStyle.copyWith(fontSize: 14),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,4 +1,3 @@
-// lib/pages/PricingPage.dart
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/paymentGetway/RazorpayQuickPayPage.dart';
 import 'package:flutter/material.dart';
@@ -68,7 +67,7 @@ class PricingPage extends StatelessWidget {
 
   Future<void> _startPaidPlan(
     BuildContext context, {
-    required String planCode, // 'Plus' or 'Pro'
+    required String planCode,
     required double rupees,
   }) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -79,7 +78,6 @@ class PricingPage extends StatelessWidget {
       );
       return;
     }
-
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -92,7 +90,6 @@ class PricingPage extends StatelessWidget {
         ),
       ),
     );
-
     if (result is Map && result['ok'] == true) {
       await auth.fetchUserData(phone);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,26 +107,20 @@ class PricingPage extends StatelessWidget {
     final auth = Provider.of<AuthProvider>(context);
     final currentPlan = auth.getPlanType ?? 'Starter';
     final currentLevel = _levelFor(currentPlan);
-
-    // Card levels
-    const starterLevel = 0;
-    const plusLevel = 1;
-    const proLevel = 2;
-
-    // Disable logic (no downgrades)
-    final starterDisabled =
-        currentLevel > starterLevel; // Plus/Pro -> disable Starter
-    final plusDisabled = currentLevel > plusLevel; // Pro -> disable Plus
-    const proDisabled = false; // Upgrades allowed anytime
-
+    final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'CETVerse Pricing Plans',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          'Unlock Your Potential',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
         ),
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        foregroundColor: Colors.black87,
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -140,119 +131,101 @@ class PricingPage extends StatelessWidget {
           ),
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Choose Your Plan',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              // Header Section - Compact
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Column(
+                  children: [
+                    Text(
+                      'Choose the perfect plan for your CET preparation',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Unlock your potential with the perfect plan for you',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade600,
+              // Plans Section - Horizontal Layout for larger screens, Vertical for smaller
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: screenWidth > 600
+                    ? IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                                child: _buildPlanCard(
+                                    context, 'Starter', currentLevel)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: _buildPlanCard(
+                                    context, 'Plus', currentLevel)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: _buildPlanCard(
+                                    context, 'Pro', currentLevel)),
+                          ],
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          _buildPlanCard(context, 'Starter', currentLevel),
+                          const SizedBox(height: 12),
+                          _buildPlanCard(context, 'Plus', currentLevel),
+                          const SizedBox(height: 12),
+                          _buildPlanCard(context, 'Pro', currentLevel),
+                        ],
+                      ),
+              ),
+              // Payment Methods - Compact
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 24),
-
-              // Starter
-              PricingCard(
-                planName: 'Starter Plan',
-                price: '₹0',
-                features: const [
-                  'MHT CET PYQs Access: Limited',
-                  'Mock Tests per Subject: 1',
-                  'Topper Profiles: Read-only',
-                  'Performance Tracking: Yes',
-                ],
-                isCurrent: currentLevel == starterLevel,
-                isDisabled: starterDisabled && currentLevel != starterLevel,
-                disabledReason: 'Downgrade not available',
-                onPurchase: () => _activateFreePlan(context),
-                buttonText: currentLevel == starterLevel
-                    ? 'Current Plan'
-                    : 'Get Started',
-                buttonColor: Colors.green,
-              ),
-              const SizedBox(height: 16),
-
-              // Plus
-              PricingCard(
-                planName: 'Plus Plan',
-                price: '₹129/year',
-                features: const [
-                  'MHT CET PYQs Access: Unlimited',
-                  'Board PYQs: Yes',
-                  'Chapter-wise Notes: Yes',
-                  'Topper Notes Download: Yes',
-                  'Mock Tests per Subject: 2',
-                  'Full Mock Test Series: No',
-                  'Topper Profiles: Read-only',
-                  'Performance Tracking: Yes',
-                ],
-                isCurrent: currentLevel == plusLevel,
-                isDisabled: plusDisabled && currentLevel != plusLevel,
-                disabledReason: 'Downgrade not available',
-                onPurchase: () => _startPaidPlan(
-                  context,
-                  planCode: 'Plus',
-                  rupees: 129,
-                ),
-                buttonText:
-                    currentLevel == plusLevel ? 'Current Plan' : 'Purchase Now',
-                buttonColor: Colors.blue,
-              ),
-              const SizedBox(height: 16),
-
-              // Pro
-              PricingCard(
-                planName: 'Pro Plan',
-                price: '₹149/year',
-                features: const [
-                  'Everything in Plus',
-                  'Board PYQs: Yes',
-                  'Full Mock Test Series: Yes',
-                  'Topper Profiles: Full Access',
-                  'Priority Features: Yes',
-                  'Performance Tracking: Yes',
-                ],
-                isCurrent: currentLevel == proLevel,
-                isDisabled: proDisabled && currentLevel != proLevel,
-                onPurchase: () => _startPaidPlan(
-                  context,
-                  planCode: 'Pro',
-                  rupees: 149,
-                ),
-                buttonText:
-                    currentLevel == proLevel ? 'Current Plan' : 'Purchase Now',
-                buttonColor: Colors.purple,
-              ),
-
-              const SizedBox(height: 32),
-              const Text(
-                'Accepted Payment Methods:',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '• UPI (PhonePe, Google Pay, Paytm)\n'
-                '• Debit/Credit Cards\n'
-                '• Net Banking\n'
-                '• Wallets',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade700,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.payment,
+                            color: Colors.blue.shade600, size: 20),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Accepted Payment Methods',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
+                      children: [
+                        _buildPaymentChip('UPI', Icons.account_balance_wallet),
+                        _buildPaymentChip('Cards', Icons.credit_card),
+                        _buildPaymentChip('Net Banking', Icons.account_balance),
+                        _buildPaymentChip('Wallets', Icons.wallet),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -261,175 +234,269 @@ class PricingPage extends StatelessWidget {
       ),
     );
   }
-}
 
-class PricingCard extends StatelessWidget {
-  final String planName;
-  final String price;
-  final List<String> features;
-  final VoidCallback onPurchase;
-  final String buttonText;
-  final Color buttonColor;
-  final bool isCurrent;
+  Widget _buildPaymentChip(String label, IconData icon) {
+    return Chip(
+      avatar: Icon(icon, size: 16, color: Colors.grey.shade600),
+      label: Text(
+        label,
+        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+      ),
+      backgroundColor: Colors.grey.shade100,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
 
-  // NEW:
-  final bool isDisabled;
-  final String? disabledReason;
-
-  const PricingCard({
-    super.key,
-    required this.planName,
-    required this.price,
-    required this.features,
-    required this.onPurchase,
-    required this.buttonText,
-    required this.buttonColor,
-    required this.isCurrent,
-    this.isDisabled = false,
-    this.disabledReason,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final disabled = isCurrent || isDisabled;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+  Widget _buildPlanCard(
+      BuildContext context, String planType, int currentLevel) {
+    final planData = _getPlanData(planType);
+    final level = _levelFor(planType);
+    final isCurrent = currentLevel == level;
+    final isDisabled = currentLevel > level;
+    return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isCurrent
               ? [Colors.blue.shade100, Colors.blue.shade50]
-              : [Colors.white, Colors.grey.shade100],
+              : planType == 'Pro'
+                  ? [Colors.purple.shade50, Colors.white]
+                  : [Colors.white, Colors.grey.shade50],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            blurRadius: 10,
+            color: Colors.grey.withOpacity(0.15),
+            blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
         border: isCurrent
-            ? Border.all(color: Colors.blue.shade700, width: 2)
-            : null,
+            ? Border.all(color: Colors.blue.shade400, width: 2)
+            : planType == 'Pro'
+                ? Border.all(color: Colors.purple.shade200, width: 1)
+                : null,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(
-              planName,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            if (isCurrent)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade700,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Current Plan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              )
-            else if (isDisabled && (disabledReason ?? '').isNotEmpty)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade500,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  disabledReason!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-          ]),
-          const SizedBox(height: 8),
-          Text(
-            price,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).primaryColor,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Features:',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...features.map((feature) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      size: 22,
-                      color: Colors.green.shade600,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        feature,
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.grey.shade800,
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        planData['name'],
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
+                      Text(
+                        planData['price'],
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: planType == 'Pro'
+                              ? Colors.purple.shade600
+                              : Colors.blue.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              )),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: disabled ? null : onPurchase,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: disabled ? Colors.grey.shade400 : buttonColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 14,
-              ),
-              elevation: disabled ? 0 : 5,
+                if (isCurrent)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade600,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'ACTIVE',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                else if (planType == 'Pro')
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade600,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'POPULAR',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            child: Text(
-              buttonText,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+            const SizedBox(height: 8),
+            // Features - Compact with icons
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Key Features:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Column(
+                  children: planData['features'].map<Widget>((feature) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(
+                            feature['available']
+                                ? Icons.check_circle
+                                : Icons.cancel,
+                            size: 16,
+                            color: feature['available']
+                                ? Colors.green.shade600
+                                : Colors.grey.shade400,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              feature['text'],
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: feature['available']
+                                    ? Colors.grey.shade800
+                                    : Colors.grey.shade500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Action Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: (isCurrent || isDisabled)
+                    ? null
+                    : () {
+                        if (planType == 'Starter') {
+                          _activateFreePlan(context);
+                        } else {
+                          _startPaidPlan(
+                            context,
+                            planCode: planType,
+                            rupees: planType == 'Plus' ? 129 : 149,
+                          );
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isCurrent || isDisabled
+                      ? Colors.grey.shade300
+                      : planType == 'Pro'
+                          ? Colors.purple.shade600
+                          : planType == 'Plus'
+                              ? Colors.blue.shade600
+                              : Colors.green.shade600,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  elevation: isCurrent || isDisabled ? 0 : 2,
+                ),
+                child: Text(
+                  isCurrent
+                      ? 'Current Plan'
+                      : isDisabled
+                          ? 'Downgrade N/A'
+                          : planType == 'Starter'
+                              ? 'Get Started'
+                              : 'Upgrade Now',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
+  }
+
+  Map<String, dynamic> _getPlanData(String planType) {
+    switch (planType) {
+      case 'Starter':
+        return {
+          'name': 'Starter Plan',
+          'price': 'FREE',
+          'features': [
+            {'text': 'Limited MHT CET PYQs', 'available': true},
+            {'text': '1 Mock Test/Subject', 'available': true},
+            {'text': 'Basic Performance Track', 'available': true},
+            {'text': 'Read-only Topper Profiles', 'available': true},
+            {'text': 'Board PYQs Access', 'available': false},
+            {'text': 'Chapter Notes Download', 'available': false},
+          ]
+        };
+      case 'Plus':
+        return {
+          'name': 'Plus Plan',
+          'price': '₹129/year',
+          'features': [
+            {'text': 'Unlimited MHT CET PYQs', 'available': true},
+            {'text': 'Board PYQs Access', 'available': true},
+            {'text': 'Chapter-wise Notes', 'available': true},
+            {'text': 'Topper Notes Download', 'available': true},
+            {'text': '2 Mock Tests/Subject', 'available': true},
+            {'text': 'Full Mock Test Series', 'available': false},
+          ]
+        };
+      case 'Pro':
+        return {
+          'name': 'Pro Plan',
+          'price': '₹149/year',
+          'features': [
+            {'text': 'Everything in Plus', 'available': true},
+            {'text': 'Full Mock Test Series', 'available': true},
+            {'text': 'Complete Topper Profiles', 'available': true},
+            {'text': 'Priority Feature Access', 'available': true},
+            {'text': 'Advanced Analytics', 'available': true},
+            {'text': 'Premium Support', 'available': true},
+          ]
+        };
+      default:
+        return {};
+    }
   }
 }

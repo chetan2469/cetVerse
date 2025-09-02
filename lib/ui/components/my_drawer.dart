@@ -4,6 +4,7 @@ import 'package:cet_verse/screens/NeedHelp.dart';
 import 'package:cet_verse/screens/PrivacyPolicyPage.dart';
 import 'package:cet_verse/screens/pricing_page.dart';
 import 'package:cet_verse/screens/profile_page.dart';
+import 'package:cet_verse/ui/components/ProgressPage.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -97,12 +98,6 @@ class MyDrawer extends StatelessWidget {
           ),
           _buildMenuItem(
             context,
-            icon: Icons.shopping_bag_outlined,
-            title: 'My Purchases',
-            onTap: () => _navigateToPage(context, 'My Purchases'),
-          ),
-          _buildMenuItem(
-            context,
             icon: Icons.help_outline,
             title: 'Need Help',
             onTap: () => _navigateToPage(context, 'Need Help'),
@@ -113,18 +108,18 @@ class MyDrawer extends StatelessWidget {
             title: 'Policy',
             onTap: () => _navigateToPage(context, 'Policy'),
           ),
-          _buildMenuItem(
-            context,
-            icon: Icons.settings,
-            title: 'Settings',
-            onTap: () => _navigateToPage(context, 'Settings'),
-          ),
-          _buildMenuItem(
-            context,
-            icon: Icons.share,
-            title: 'Share & Earn',
-            onTap: () => _navigateToPage(context, 'Share & Earn'),
-          ),
+          // _buildMenuItem(
+          //   context,
+          //   icon: Icons.settings,
+          //   title: 'Settings',
+          //   onTap: () => _navigateToPage(context, 'Settings'),
+          // ),
+          // _buildMenuItem(
+          //   context,
+          //   icon: Icons.share,
+          //   title: 'Share & Earn',
+          //   onTap: () => _navigateToPage(context, 'Share & Earn'),
+          // ),
           // Logout Button
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
@@ -191,7 +186,10 @@ class MyDrawer extends StatelessWidget {
         // Navigate to Share & Earn Page
         break;
       case 'My Analysis':
-        // Navigate to My Analysis Page
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProgressPage()),
+        );
         break;
       case 'My Purchases':
         // Navigate to My Purchases Page

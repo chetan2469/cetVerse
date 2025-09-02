@@ -9,9 +9,9 @@ import 'screens/flash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (!kIsWeb) {
-    await TeXRenderingServer.start();
-  }
+  // if (!kIsWeb) {
+  //   await TeXRenderingServer.start();
+  // }
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

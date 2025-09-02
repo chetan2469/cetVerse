@@ -28,121 +28,118 @@ class _PYQChoiceState extends State<PYQChoice> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(context),
-            const SizedBox(height: 16),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                backgroundColor: Colors.white,
-                color: Colors.indigoAccent,
-                strokeWidth: 3.0,
-                displacement: 40.0,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Group Wise Practice",
-                        style: AppTheme.subheadingStyle.copyWith(
-                          fontSize: 24,
-                          color: Colors.black,
-                        ),
-                        textAlign: TextAlign.center,
+      body: Column(
+        children: [
+          _buildAppBar(context),
+          const SizedBox(height: 16),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              backgroundColor: Colors.white,
+              color: Colors.indigoAccent,
+              strokeWidth: 3.0,
+              displacement: 40.0,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Group Wise Practice",
+                      style: AppTheme.subheadingStyle.copyWith(
+                        fontSize: 24,
+                        color: Colors.black,
                       ),
-                      const SizedBox(height: 24),
-                      _buildOptionCard(
-                        context,
-                        icon: Icons.list_alt_outlined,
-                        title: "PCM",
-                        description:
-                            "Attempt full-length PYQ Tests and \nTrack your progress & scores ! ",
-                        onTap: () {
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildOptionCard(
+                      context,
+                      icon: Icons.list_alt_outlined,
+                      title: "PCM",
+                      description:
+                          "Attempt full-length PYQ Tests and \nTrack your progress & scores ! ",
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PYQTestYear(
+                              pyqType: "PCM",
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    _buildOptionCard(
+                      context,
+                      icon: Icons.list_alt_outlined,
+                      title: "PCB",
+                      description:
+                          "Attempt full-length PYQ Tests and \nTrack your progress & scores !",
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PYQTestYear(
+                              pyqType: "PCB",
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // Conditionally show "Add Test" button for Admins
+                    const SizedBox(height: 24),
+                    if (authProvider.getUserType?.toLowerCase() == 'admin') ...[
+                      ElevatedButton(
+                        onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => PYQTestYear(
-                                pyqType: "PCM",
-                              ),
+                              builder: (context) => const AddPyq(),
+                            ),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Add Test button pressed!'),
                             ),
                           );
                         },
-                      ),
-                      const SizedBox(height: 24),
-                      _buildOptionCard(
-                        context,
-                        icon: Icons.list_alt_outlined,
-                        title: "PCB",
-                        description:
-                            "Attempt full-length PYQ Tests and \nTrack your progress & scores !",
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PYQTestYear(
-                                pyqType: "PCB",
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      // Conditionally show "Add Test" button for Admins
-                      const SizedBox(height: 24),
-                      if (authProvider.getUserType?.toLowerCase() ==
-                          'admin') ...[
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const AddPyq(),
-                              ),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Add Test button pressed!'),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 16,
                           ),
-                          child: const Text(
-                            'Add Test',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                      ] else ...[
-                        // Debug UI for non-Admin users
-                        Text(
-                          'Admin features not available (User type: ${authProvider.getUserType ?? 'Unknown'})',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.red,
+                        child: const Text(
+                          'Add Test',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                      ],
+                      ),
+                    ] else ...[
+                      // Debug UI for non-Admin users
+                      // Text(
+                      //   'Admin features not available (User type: ${authProvider.getUserType ?? 'Unknown'})',
+                      //   style: const TextStyle(
+                      //     fontSize: 14,
+                      //     color: Colors.red,
+                      //   ),
+                      //   textAlign: TextAlign.center,
+                      // ),
                     ],
-                  ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -16,33 +16,40 @@ class DashboardPage extends StatelessWidget {
     final user = authProvider.currentUser;
     final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
-    // Function to handle refresh logic
     Future<void> handleRefresh() async {
-      // Simulate a network call or data reload with a delay
       await Future.delayed(const Duration(seconds: 2));
-      // Optionally, trigger specific reloads here, e.g.:
-      // - authProvider.fetchUserData(user?.phoneNumber ?? '');
-      // - Reload images or data in PopularCoursesPage via a provider
     }
 
-    return SafeArea(
-      child: Scaffold(
-        key: scaffoldKey,
-        backgroundColor: AppTheme.scaffoldBackground,
-        drawer: const MyDrawer(),
-        body: RefreshIndicator(
-          onRefresh: handleRefresh, // Called when user pulls down to refresh
-          color: AppTheme.primaryColor ?? Colors.blue, // Spinner color
-          backgroundColor: Colors.white, // Background of the spinner
-          displacement: 40, // Distance from top where the indicator appears
-          child: SingleChildScrollView(
+    return Scaffold(
+      key: scaffoldKey,
+      backgroundColor: AppTheme.scaffoldBackground,
+      drawer: const MyDrawer(),
+      body: RefreshIndicator(
+        onRefresh: handleRefresh,
+        color: AppTheme.primaryColor ?? Colors.blue,
+        backgroundColor: Colors.white,
+        displacement: 40,
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => const [
+            SliverAppBar(
+              pinned: false,
+              floating: false,
+              snap: false,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              automaticallyImplyLeading: false,
+              toolbarHeight:
+                  0, // using SliverAppBar as requested; no visual change
+            ),
+          ],
+          body: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
-            ), // Ensure scrollability even with short content
+            ),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: MediaQuery.of(context).size.height,
-              ), // Ensure content takes up at least full screen height
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -52,21 +59,15 @@ class DashboardPage extends StatelessWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 8),
+                        horizontal: 8.0, vertical: 8),
                     child: Column(
                       children: [
-                        // const SizedBox(height: 24),
-                        // PromoBannerPage(),
                         PerformancePage(),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: const PopularCoursesPage(),
+                        ),
                         const SizedBox(height: 24),
-                        const PopularCoursesPage(),
-                        const SizedBox(height: 24),
-                        // Uncomment/add more widgets to increase content height if needed
-                        // const SearchBarPage(),
-                        // const SizedBox(height: 24),
-                        // const SubjectsPage(),
-                        // const SizedBox(height: 24),
-                        // const YourCoursesPage(),
                       ],
                     ),
                   ),

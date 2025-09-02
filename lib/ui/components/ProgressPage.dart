@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ProgressPage extends StatefulWidget {
   const ProgressPage({super.key});
@@ -15,11 +16,12 @@ class ProgressPage extends StatefulWidget {
 }
 
 class _ProgressPageState extends State<ProgressPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   int totalTestsTaken = 0;
-  double averageScore = 0.0; // Percentage
-  double overallProgress = 0.0; // Percentage
-  String level = "Beginner"; // Based on overallProgress
+  double averageScore = 0.0;
+  double overallProgress = 0.0;
+  String level = "Beginner";
+
   Map<String, Map<String, dynamic>> subjectAnalytics = {
     'Physics': {
       'solved': 0,
@@ -28,7 +30,7 @@ class _ProgressPageState extends State<ProgressPage>
       'correct': 0,
       'wrong': 0,
       'unattempted': 0
-    }, // min/ques
+    },
     'Chemistry': {
       'solved': 0,
       'accuracy': 0.0,
@@ -54,26 +56,40 @@ class _ProgressPageState extends State<ProgressPage>
       'unattempted': 0
     },
   };
-  List<double> testTrends = []; // Last 10 scores
-  List<Map<String, dynamic>> recentTests = []; // Last 3 tests
-  List<Map<String, dynamic>> last10Tests = []; // Last 10 tests for line chart
+
+  List<Map<String, dynamic>> recentTests = [];
+  List<Map<String, dynamic>> last10Tests = [];
   Map<String, dynamic> mockVsPyqStats = {
     'mock': {'count': 0, 'avgScore': 0.0, 'totalScore': 0.0},
     'pyq': {'count': 0, 'avgScore': 0.0, 'totalScore': 0.0},
   };
-  bool _isLoading = true;
 
-  late AnimationController _controller;
-  late Map<String, Animation<double>> _performanceAnimations;
+  // Individual loading states for each component
+  bool _isLoadingOverall = true;
+  bool _isLoadingSubjects = true;
+  bool _isLoadingCharts = true;
+  bool _isLoadingRecent = true;
+  String? _errorMessage;
+
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    );
+    _initializeAnimations();
     _fetchProgressData();
+  }
+
+  void _initializeAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
   }
 
   Future<void> _fetchProgressData() async {
@@ -82,36 +98,100 @@ class _ProgressPageState extends State<ProgressPage>
 
     if (userPhoneNumber == null) {
       setState(() {
-        _isLoading = false;
+        _isLoadingOverall = false;
+        _isLoadingSubjects = false;
+        _isLoadingCharts = false;
+        _isLoadingRecent = false;
+        _errorMessage = 'Please log in to view progress';
       });
       return;
     }
+
+    try {
+      // Load each component with different delays for staggered effect
+      _loadOverallProgress(userPhoneNumber);
+      _loadSubjectProgress(userPhoneNumber);
+      _loadChartsData(userPhoneNumber);
+      _loadRecentTests(userPhoneNumber);
+    } catch (e) {
+      setState(() {
+        _isLoadingOverall = false;
+        _isLoadingSubjects = false;
+        _isLoadingCharts = false;
+        _isLoadingRecent = false;
+        _errorMessage = 'Error loading progress data: $e';
+      });
+    }
+  }
+
+  Future<void> _loadOverallProgress(String userPhoneNumber) async {
+    await Future.delayed(
+        const Duration(milliseconds: 1000)); // Simulate network delay
 
     try {
       final testHistorySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(userPhoneNumber)
           .collection('testHistory')
-          .orderBy('timestamp', descending: true)
           .get();
 
       final pyqHistorySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(userPhoneNumber)
           .collection('pyqHistory')
-          .orderBy('timestamp', descending: true)
           .get();
 
-      // Total tests taken
+      // Process overall statistics
       totalTestsTaken =
           testHistorySnapshot.docs.length + pyqHistorySnapshot.docs.length;
 
-      // Collect all scores and accuracies
       List<double> allScores = [];
       List<double> allAccuracies = [];
-      List<Map<String, dynamic>> allTests = [];
 
-      // Process testHistory (subject-wise)
+      for (var doc in testHistorySnapshot.docs) {
+        final data = doc.data();
+        final score = (data['score'] as num?)?.toDouble() ?? 0.0;
+        final accuracy =
+            double.tryParse(data['accuracy'] as String? ?? '0.0') ?? 0.0;
+        allScores.add(score);
+        allAccuracies.add(accuracy);
+      }
+
+      for (var doc in pyqHistorySnapshot.docs) {
+        final data = doc.data();
+        final score = (data['score'] as num?)?.toDouble() ?? 0.0;
+        final accuracy =
+            double.tryParse(data['accuracy'] as String? ?? '0.0') ?? 0.0;
+        allScores.add(score);
+        allAccuracies.add(accuracy);
+      }
+
+      if (allScores.isNotEmpty) {
+        averageScore = allScores.reduce((a, b) => a + b) / allScores.length;
+      }
+      if (allAccuracies.isNotEmpty) {
+        overallProgress =
+            allAccuracies.reduce((a, b) => a + b) / allAccuracies.length;
+      }
+
+      _updateLevel();
+
+      setState(() => _isLoadingOverall = false);
+    } catch (e) {
+      setState(() => _isLoadingOverall = false);
+    }
+  }
+
+  Future<void> _loadSubjectProgress(String userPhoneNumber) async {
+    await Future.delayed(const Duration(milliseconds: 1500)); // Different delay
+
+    try {
+      final testHistorySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userPhoneNumber)
+          .collection('testHistory')
+          .get();
+
       Map<String, List<Map<String, dynamic>>> subjectData = {
         'Physics': [],
         'Chemistry': [],
@@ -119,72 +199,55 @@ class _ProgressPageState extends State<ProgressPage>
         'Biology': [],
       };
 
-      // Mock test stats
-      double totalMockScore = 0;
-      int mockCount = 0;
-
       for (var doc in testHistorySnapshot.docs) {
         final data = doc.data();
         final subject = data['subject'] as String?;
-        final score = (data['score'] as num?)?.toDouble() ?? 0.0;
-        final accuracy =
-            double.tryParse(data['accuracy'] as String? ?? '0.0') ?? 0.0;
-        final correct = data['correct'] as int? ?? 0;
-        final wrong = data['wrong'] as int? ?? 0;
-        final unattempted = data['unattempted'] as int? ?? 0;
-        final totalQuestions = correct + wrong + unattempted;
-        final timestamp = data['timestamp'] as Timestamp?;
-
-        allScores.add(score);
-        allAccuracies.add(accuracy);
-        totalMockScore += score;
-        mockCount++;
-
-        if (timestamp != null) {
-          allTests.add({
-            'testId':
-                '${data['subject']} ${data['chapter']} Test ${data['testnumber']}',
-            'score': score,
-            'date': DateFormat('MMM dd, yyyy').format(timestamp.toDate()),
-            'timestamp': timestamp.toDate(),
-            'type': 'mock',
-          });
-        }
-
         if (subject != null && subjectData.containsKey(subject)) {
           subjectData[subject]!.add(data);
         }
       }
 
-      // PYQ test stats
-      double totalPyqScore = 0;
-      int pyqCount = 0;
+      _calculateSubjectAnalytics(subjectData);
+      setState(() => _isLoadingSubjects = false);
+    } catch (e) {
+      setState(() => _isLoadingSubjects = false);
+    }
+  }
 
-      // Process pyqHistory (overall tests)
+  Future<void> _loadChartsData(String userPhoneNumber) async {
+    await Future.delayed(const Duration(milliseconds: 2000)); // Different delay
+
+    try {
+      final testHistorySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userPhoneNumber)
+          .collection('testHistory')
+          .get();
+
+      final pyqHistorySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userPhoneNumber)
+          .collection('pyqHistory')
+          .get();
+
+      double totalMockScore = 0;
+      int mockCount = testHistorySnapshot.docs.length;
+
+      for (var doc in testHistorySnapshot.docs) {
+        final data = doc.data();
+        final score = (data['score'] as num?)?.toDouble() ?? 0.0;
+        totalMockScore += score;
+      }
+
+      double totalPyqScore = 0;
+      int pyqCount = pyqHistorySnapshot.docs.length;
+
       for (var doc in pyqHistorySnapshot.docs) {
         final data = doc.data();
         final score = (data['score'] as num?)?.toDouble() ?? 0.0;
-        final accuracy =
-            double.tryParse(data['accuracy'] as String? ?? '0.0') ?? 0.0;
-        final timestamp = data['timestamp'] as Timestamp?;
-
-        allScores.add(score);
-        allAccuracies.add(accuracy);
         totalPyqScore += score;
-        pyqCount++;
-
-        if (timestamp != null) {
-          allTests.add({
-            'testId': 'PYQ ${data['year']} ${data['pyqType']}',
-            'score': score,
-            'date': DateFormat('MMM dd, yyyy').format(timestamp.toDate()),
-            'timestamp': timestamp.toDate(),
-            'type': 'pyq',
-          });
-        }
       }
 
-      // Update mock vs pyq stats
       mockVsPyqStats = {
         'mock': {
           'count': mockCount,
@@ -198,109 +261,110 @@ class _ProgressPageState extends State<ProgressPage>
         },
       };
 
-      // Calculate averages
-      if (allScores.isNotEmpty) {
-        averageScore = allScores.reduce((a, b) => a + b) / allScores.length;
-      }
-      if (allAccuracies.isNotEmpty) {
-        overallProgress =
-            allAccuracies.reduce((a, b) => a + b) / allAccuracies.length;
-      }
+      setState(() => _isLoadingCharts = false);
+    } catch (e) {
+      setState(() => _isLoadingCharts = false);
+    }
+  }
 
-      _updateLevel();
+  Future<void> _loadRecentTests(String userPhoneNumber) async {
+    await Future.delayed(const Duration(milliseconds: 2500)); // Different delay
 
-      // Calculate subject analytics from testHistory
-      subjectData.forEach((subject, tests) {
-        if (tests.isNotEmpty) {
-          int totalSolved = 0;
-          double totalAccuracy = 0.0;
-          double totalTime = 0.0;
-          int testCount = 0;
-          int totalCorrect = 0;
-          int totalWrong = 0;
-          int totalUnattempted = 0;
+    try {
+      final testHistorySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userPhoneNumber)
+          .collection('testHistory')
+          .orderBy('timestamp', descending: true)
+          .limit(3)
+          .get();
 
-          for (var test in tests) {
-            final solved =
-                (test['correct'] as int? ?? 0) + (test['wrong'] as int? ?? 0);
-            final accuracy =
-                double.tryParse(test['accuracy'] as String? ?? '0.0') ?? 0.0;
-            final correct = test['correct'] as int? ?? 0;
-            final wrong = test['wrong'] as int? ?? 0;
-            final unattempted = test['unattempted'] as int? ?? 0;
+      final pyqHistorySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userPhoneNumber)
+          .collection('pyqHistory')
+          .orderBy('timestamp', descending: true)
+          .limit(3)
+          .get();
 
-            // Assuming timeleft is in minutes, and total questions
-            final timeleft = double.tryParse(
-                    (test['timeleft'] as String?)?.split(':')[0] ?? '0') ??
-                0.0;
-            final totalQuestions = solved + (test['unattempted'] as int? ?? 0);
-            final avgTime =
-                totalQuestions > 0 ? timeleft / totalQuestions : 0.0;
+      List<Map<String, dynamic>> allTests = [];
 
-            totalSolved += solved;
-            totalAccuracy += accuracy;
-            totalTime += avgTime;
-            totalCorrect += correct;
-            totalWrong += wrong;
-            totalUnattempted += unattempted;
-            testCount++;
-          }
-
-          subjectAnalytics[subject] = {
-            'solved': totalSolved,
-            'accuracy': totalAccuracy / testCount,
-            'avgTime': totalTime / testCount,
-            'correct': totalCorrect,
-            'wrong': totalWrong,
-            'unattempted': totalUnattempted,
-          };
+      for (var doc in testHistorySnapshot.docs) {
+        final data = doc.data();
+        final timestamp = data['timestamp'] as Timestamp?;
+        if (timestamp != null) {
+          allTests.add({
+            'testId':
+                '${data['subject']} ${data['chapter']} Test ${data['testnumber']}',
+            'score': (data['score'] as num?)?.toDouble() ?? 0.0,
+            'date': DateFormat('MMM dd, yyyy').format(timestamp.toDate()),
+            'timestamp': timestamp.toDate(),
+            'type': 'mock',
+          });
         }
-      });
+      }
 
-      // Test trends: last 10 scores
+      for (var doc in pyqHistorySnapshot.docs) {
+        final data = doc.data();
+        final timestamp = data['timestamp'] as Timestamp?;
+        if (timestamp != null) {
+          allTests.add({
+            'testId': 'PYQ ${data['year']} ${data['pyqType']}',
+            'score': (data['score'] as num?)?.toDouble() ?? 0.0,
+            'date': DateFormat('MMM dd, yyyy').format(timestamp.toDate()),
+            'timestamp': timestamp.toDate(),
+            'type': 'pyq',
+          });
+        }
+      }
+
       allTests.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
-      testTrends =
-          allTests.take(10).map((test) => test['score'] as double).toList();
-
-      // Last 10 tests for line chart
-      last10Tests = allTests.take(10).toList();
-
-      // Recent tests: last 3
       recentTests = allTests.take(3).toList();
 
-      setState(() {
-        _isLoading = false;
-        _performanceAnimations = {
-          'Physics': Tween<double>(
-                  begin: 0,
-                  end: (subjectAnalytics['Physics']?['accuracy'] ?? 0.0) / 100)
-              .animate(
-                  CurvedAnimation(parent: _controller, curve: Curves.easeOut)),
-          'Chemistry': Tween<double>(
-                  begin: 0,
-                  end:
-                      (subjectAnalytics['Chemistry']?['accuracy'] ?? 0.0) / 100)
-              .animate(
-                  CurvedAnimation(parent: _controller, curve: Curves.easeOut)),
-          'Maths': Tween<double>(
-                  begin: 0,
-                  end: (subjectAnalytics['Maths']?['accuracy'] ?? 0.0) / 100)
-              .animate(
-                  CurvedAnimation(parent: _controller, curve: Curves.easeOut)),
-          'Biology': Tween<double>(
-                  begin: 0,
-                  end: (subjectAnalytics['Biology']?['accuracy'] ?? 0.0) / 100)
-              .animate(
-                  CurvedAnimation(parent: _controller, curve: Curves.easeOut)),
-        };
-        _controller.forward();
-      });
+      setState(() => _isLoadingRecent = false);
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      // Handle error
+      setState(() => _isLoadingRecent = false);
     }
+  }
+
+  void _calculateSubjectAnalytics(
+      Map<String, List<Map<String, dynamic>>> subjectData) {
+    subjectData.forEach((subject, tests) {
+      if (tests.isNotEmpty) {
+        int totalSolved = 0;
+        double totalAccuracy = 0.0;
+        int testCount = 0;
+        int totalCorrect = 0;
+        int totalWrong = 0;
+        int totalUnattempted = 0;
+
+        for (var test in tests) {
+          final solved =
+              (test['correct'] as int? ?? 0) + (test['wrong'] as int? ?? 0);
+          final accuracy =
+              double.tryParse(test['accuracy'] as String? ?? '0.0') ?? 0.0;
+          final correct = test['correct'] as int? ?? 0;
+          final wrong = test['wrong'] as int? ?? 0;
+          final unattempted = test['unattempted'] as int? ?? 0;
+
+          totalSolved += solved;
+          totalAccuracy += accuracy;
+          totalCorrect += correct;
+          totalWrong += wrong;
+          totalUnattempted += unattempted;
+          testCount++;
+        }
+
+        subjectAnalytics[subject] = {
+          'solved': totalSolved,
+          'accuracy': totalAccuracy / testCount,
+          'avgTime': 0.0,
+          'correct': totalCorrect,
+          'wrong': totalWrong,
+          'unattempted': totalUnattempted,
+        };
+      }
+    });
   }
 
   void _updateLevel() {
@@ -313,754 +377,936 @@ class _ProgressPageState extends State<ProgressPage>
     }
   }
 
-  // Widget for Time-Series Line Graph
-  Widget _buildTimeSeriesChart() {
-    if (last10Tests.isEmpty) {
-      return const Center(child: Text('No test data available'));
-    }
-
-    List<FlSpot> spots = [];
-    for (int i = 0; i < last10Tests.length; i++) {
-      spots.add(FlSpot(i.toDouble(), last10Tests[i]['score']));
-    }
-
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Last 10 Test Scores Trend",
-              style: AppTheme.subheadingStyle.copyWith(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: true),
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          int index = value.toInt();
-                          if (index < last10Tests.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                'T${index + 1}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            '${value.toInt()}%',
-                            style: const TextStyle(fontSize: 12),
-                          );
-                        },
-                      ),
-                    ),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  borderData: FlBorderData(show: true),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spots,
-                      isCurved: true,
-                      color: Colors.indigo,
-                      barWidth: 3,
-                      dotData: FlDotData(show: true),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Colors.indigo.withOpacity(0.2),
-                      ),
-                    ),
-                  ],
-                  minY: 0,
-                  maxY: 100,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Widget for Subject Radar Chart
-  Widget _buildSubjectRadarChart() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Subject Performance Radar",
-              style: AppTheme.subheadingStyle.copyWith(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 250,
-              child: RadarChart(
-                RadarChartData(
-                  dataSets: [
-                    RadarDataSet(
-                      fillColor: Colors.indigo.withOpacity(0.2),
-                      borderColor: Colors.indigo,
-                      borderWidth: 2,
-                      dataEntries: [
-                        RadarEntry(
-                            value: (subjectAnalytics['Physics']?['accuracy'] ??
-                                    0.0) /
-                                100),
-                        RadarEntry(
-                            value: (subjectAnalytics['Chemistry']
-                                        ?['accuracy'] ??
-                                    0.0) /
-                                100),
-                        RadarEntry(
-                            value: (subjectAnalytics['Maths']?['accuracy'] ??
-                                    0.0) /
-                                100),
-                        RadarEntry(
-                            value: (subjectAnalytics['Biology']?['accuracy'] ??
-                                    0.0) /
-                                100),
-                      ],
-                    ),
-                  ],
-                  radarBackgroundColor: Colors.transparent,
-                  borderData: FlBorderData(show: false),
-                  radarBorderData:
-                      const BorderSide(color: Colors.grey, width: 1),
-                  titlePositionPercentageOffset: 0.2,
-                  titleTextStyle: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.bold),
-                  getTitle: (index, angle) {
-                    switch (index) {
-                      case 0:
-                        return RadarChartTitle(text: 'Physics');
-                      case 1:
-                        return RadarChartTitle(text: 'Chemistry');
-                      case 2:
-                        return RadarChartTitle(text: 'Maths');
-                      case 3:
-                        return RadarChartTitle(text: 'Biology');
-                      default:
-                        return const RadarChartTitle(text: '');
-                    }
-                  },
-                  tickCount: 5,
-                  ticksTextStyle: const TextStyle(fontSize: 10),
-                  tickBorderData:
-                      const BorderSide(color: Colors.grey, width: 1),
-                  gridBorderData:
-                      const BorderSide(color: Colors.grey, width: 1),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Widget for Stacked Bar Charts
-  Widget _buildStackedBarChart() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Question Distribution by Subject",
-              style: AppTheme.subheadingStyle.copyWith(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: _getMaxQuestions(),
-                  barGroups: _buildBarGroups(),
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          switch (value.toInt()) {
-                            case 0:
-                              return const Text('Physics',
-                                  style: TextStyle(fontSize: 12));
-                            case 1:
-                              return const Text('Chemistry',
-                                  style: TextStyle(fontSize: 12));
-                            case 2:
-                              return const Text('Maths',
-                                  style: TextStyle(fontSize: 12));
-                            case 3:
-                              return const Text('Biology',
-                                  style: TextStyle(fontSize: 12));
-                            default:
-                              return const Text('');
-                          }
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: const TextStyle(fontSize: 12),
-                          );
-                        },
-                      ),
-                    ),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  borderData: FlBorderData(show: true),
-                  barTouchData: BarTouchData(enabled: true),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildLegendItem(Colors.green, 'Correct'),
-                _buildLegendItem(Colors.red, 'Wrong'),
-                _buildLegendItem(Colors.grey, 'Unattempted'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  double _getMaxQuestions() {
-    double max = 0;
-    subjectAnalytics.forEach((subject, data) {
-      double total =
-          (data['correct'] + data['wrong'] + data['unattempted']).toDouble();
-      if (total > max) max = total;
-    });
-    return max * 1.1; // Add 10% padding
-  }
-
-  List<BarChartGroupData> _buildBarGroups() {
-    List<BarChartGroupData> groups = [];
-    List<String> subjects = ['Physics', 'Chemistry', 'Maths', 'Biology'];
-
-    for (int i = 0; i < subjects.length; i++) {
-      String subject = subjects[i];
-      Map<String, dynamic> data = subjectAnalytics[subject]!;
-
-      double correct = data['correct'].toDouble();
-      double wrong = data['wrong'].toDouble();
-      double unattempted = data['unattempted'].toDouble();
-
-      groups.add(
-        BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(
-              toY: correct + wrong + unattempted,
-              color: Colors.transparent,
-              width: 40,
-              rodStackItems: [
-                BarChartRodStackItem(0, correct, Colors.green),
-                BarChartRodStackItem(correct, correct + wrong, Colors.red),
-                BarChartRodStackItem(correct + wrong,
-                    correct + wrong + unattempted, Colors.grey),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
-    return groups;
-  }
-
-  Widget _buildLegendItem(Color color, String label) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(2),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        title: const Text(
+          'Progress Overview',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
         ),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 12)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 1,
+            color: Colors.grey.shade300,
+          ),
+        ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade50, Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Overall Progress Card with individual shimmer
+            _isLoadingOverall
+                ? _buildOverallProgressShimmer()
+                : _buildOverallProgressCard(),
+            const SizedBox(height: 16),
+
+            // Subject Progress Cards with individual shimmer
+            _isLoadingSubjects
+                ? _buildSubjectProgressShimmer()
+                : _buildSubjectProgressCards(),
+            const SizedBox(height: 16),
+
+            // Charts Section with individual shimmer
+            _isLoadingCharts ? _buildChartsShimmer() : _buildChartsSection(),
+            const SizedBox(height: 16),
+
+            // Recent Tests with individual shimmer
+            _isLoadingRecent
+                ? _buildRecentTestsShimmer()
+                : _buildRecentTestsCard(),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Individual Shimmer Widgets for each component
+
+  Widget _buildOverallProgressShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      period: const Duration(milliseconds: 1000),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade100, Colors.purple.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  width: 150,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubjectProgressShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      period: const Duration(milliseconds: 1200),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 200,
+            height: 18,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.2,
+            ),
+            itemCount: 4,
+            itemBuilder: (context, index) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 80,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 60,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: double.infinity,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 100,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChartsShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      period: const Duration(milliseconds: 1400),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 200,
+              height: 18,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentTestsShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      period: const Duration(milliseconds: 1600),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 120,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  width: 80,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(
+                3,
+                (index) => Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade300,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  width: 100,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade300,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 60,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Actual content widgets (same as before)
+  Widget _buildOverallProgressCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade100, Colors.purple.shade50],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.trending_up,
+                color: Colors.blue.shade700,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Overall Progress',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${overallProgress.toStringAsFixed(1)}%',
+                      style: GoogleFonts.poppins(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: overallProgress / 100,
+                      minHeight: 8,
+                      backgroundColor: Colors.grey.shade300,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.star,
+                      color: Colors.orange.shade600,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      level,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildStatItem(
+                  'Tests Taken', totalTestsTaken.toString(), Icons.quiz),
+              const SizedBox(width: 20),
+              _buildStatItem('Avg. Score',
+                  '${averageScore.toStringAsFixed(1)}%', Icons.grade),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: Colors.blue.shade600),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubjectProgressCards() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Subject-wise Performance',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.2,
+          ),
+          itemCount: subjectAnalytics.length,
+          itemBuilder: (context, index) {
+            final subject = subjectAnalytics.keys.elementAt(index);
+            final data = subjectAnalytics[subject]!;
+            final colors = [
+              Colors.blue,
+              Colors.orange,
+              Colors.green,
+              Colors.purple
+            ];
+            final color = colors[index];
+
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.science,
+                          color: color,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          subject,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${(data['accuracy'] as double).toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  LinearProgressIndicator(
+                    value: (data['accuracy'] as double) / 100,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                    minHeight: 4,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${data['solved']} questions solved',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ],
     );
   }
 
-  // Widget for Mock vs PYQ Comparison
-  Widget _buildMockVsPyqChart() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Mock vs PYQ Performance",
-              style: AppTheme.subheadingStyle.copyWith(fontSize: 18),
+  Widget _buildChartsSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Mock vs PYQ Performance',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: 100,
-                  barGroups: [
-                    BarChartGroupData(
-                      x: 0,
-                      barRods: [
-                        BarChartRodData(
-                          toY: mockVsPyqStats['mock']['avgScore'],
-                          color: Colors.blue,
-                          width: 40,
-                        ),
-                      ],
-                    ),
-                    BarChartGroupData(
-                      x: 1,
-                      barRods: [
-                        BarChartRodData(
-                          toY: mockVsPyqStats['pyq']['avgScore'],
-                          color: Colors.orange,
-                          width: 40,
-                        ),
-                      ],
-                    ),
-                  ],
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          switch (value.toInt()) {
-                            case 0:
-                              return const Text('Mock Tests',
-                                  style: TextStyle(fontSize: 12));
-                            case 1:
-                              return const Text('PYQ Tests',
-                                  style: TextStyle(fontSize: 12));
-                            default:
-                              return const Text('');
-                          }
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            '${value.toInt()}%',
-                            style: const TextStyle(fontSize: 12),
-                          );
-                        },
-                      ),
-                    ),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  borderData: FlBorderData(show: true),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildComparisonCard(
+                  'Mock Tests',
+                  mockVsPyqStats['mock']['count'].toString(),
+                  '${mockVsPyqStats['mock']['avgScore'].toStringAsFixed(1)}%',
+                  Colors.blue,
+                  Icons.quiz,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Column(
-                  children: [
-                    Text('Mock Tests', style: AppTheme.captionStyle),
-                    Text('Count: ${mockVsPyqStats['mock']['count']}',
-                        style: AppTheme.captionStyle),
-                    Text(
-                        'Avg: ${mockVsPyqStats['mock']['avgScore'].toStringAsFixed(1)}%',
-                        style: AppTheme.captionStyle),
-                  ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildComparisonCard(
+                  'PYQ Tests',
+                  mockVsPyqStats['pyq']['count'].toString(),
+                  '${mockVsPyqStats['pyq']['avgScore'].toStringAsFixed(1)}%',
+                  Colors.orange,
+                  Icons.history_edu,
                 ),
-                Column(
-                  children: [
-                    Text('PYQ Tests', style: AppTheme.captionStyle),
-                    Text('Count: ${mockVsPyqStats['pyq']['count']}',
-                        style: AppTheme.captionStyle),
-                    Text(
-                        'Avg: ${mockVsPyqStats['pyq']['avgScore'].toStringAsFixed(1)}%',
-                        style: AppTheme.captionStyle),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return Scaffold(
-      backgroundColor: AppTheme.scaffoldBackground,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          "Progress Overview",
-          style: AppTheme.subheadingStyle.copyWith(fontSize: 20),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 2,
-        iconTheme: const IconThemeData(color: Colors.indigo),
+  Widget _buildComparisonCard(
+      String title, String count, String average, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            // Overall Progress Card
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [Colors.indigo.shade50, Colors.white],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            count,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            'Avg: $average',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentTestsCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Recent Tests',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () {
+                  // Navigate to full history
+                },
+                icon: const Icon(Icons.arrow_forward, size: 16),
+                label: const Text('View All'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (recentTests.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Overall Progress",
-                      style: AppTheme.subheadingStyle.copyWith(fontSize: 18),
-                    ),
-                    const SizedBox(height: 12),
-                    LinearProgressIndicator(
-                      value: overallProgress / 100,
-                      minHeight: 10,
-                      backgroundColor: Colors.grey[300],
-                      valueColor:
-                          const AlwaysStoppedAnimation<Color>(Colors.indigo),
-                      borderRadius: BorderRadius.circular(5),
+                    Icon(
+                      Icons.quiz_outlined,
+                      size: 48,
+                      color: Colors.grey.shade400,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "${overallProgress.toStringAsFixed(1)}%",
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.indigo,
+                      'No tests taken yet',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Tests Taken: $totalTestsTaken | Avg. Score: ${averageScore.toStringAsFixed(1)}%",
-                      style: AppTheme.captionStyle.copyWith(fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.yellow, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          "Level: $level",
-                          style: AppTheme.captionStyle
-                              .copyWith(fontSize: 14, color: Colors.indigo),
-                        ),
-                      ],
                     ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // Time-Series Line Graph
-            _buildTimeSeriesChart(),
-            const SizedBox(height: 16),
-
-            // Subject Radar Chart
-            _buildSubjectRadarChart(),
-            const SizedBox(height: 16),
-
-            // Stacked Bar Chart
-            _buildStackedBarChart(),
-            const SizedBox(height: 16),
-
-            // Mock vs PYQ Chart
-            _buildMockVsPyqChart(),
-            const SizedBox(height: 16),
-
-            // Subject-wise Progress with Animated Bars
-            Text(
-              "Subject-wise Progress",
-              style: AppTheme.subheadingStyle.copyWith(fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            ...subjectAnalytics.entries.map((entry) {
-              final subject = entry.key;
-              final percentage = entry.value['accuracy'] as double? ?? 0.0;
-              return Card(
-                elevation: 4,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Container(
+            )
+          else
+            ...recentTests.map((test) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "$subject Progress",
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w600),
-                          ),
-                          Text(
-                            "${percentage.toInt()}%",
-                            style: TextStyle(
-                              color: subject == 'Physics'
-                                  ? Colors.blue
-                                  : subject == 'Chemistry'
-                                      ? Colors.orange
-                                      : subject == 'Maths'
-                                          ? Colors.green
-                                          : Colors.purple,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      AnimatedBuilder(
-                        animation: _performanceAnimations[subject]!,
-                        builder: (context, child) {
-                          return LinearProgressIndicator(
-                            value: _performanceAnimations[subject]!.value,
-                            backgroundColor: Colors.grey.shade300,
-                            valueColor: AlwaysStoppedAnimation(
-                              subject == 'Physics'
-                                  ? Colors.blue
-                                  : subject == 'Chemistry'
-                                      ? Colors.orange
-                                      : subject == 'Maths'
-                                          ? Colors.green
-                                          : Colors.purple,
-                            ),
-                            minHeight: 8,
-                            borderRadius: BorderRadius.circular(20),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-            const SizedBox(height: 16),
-
-            // Subject-wise Analytics Cards
-            Text(
-              "Subject-wise Analytics",
-              style: AppTheme.subheadingStyle.copyWith(fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            ...subjectAnalytics.entries.map((entry) {
-              final subject = entry.key;
-              final data = entry.value;
-              return Card(
-                elevation: 4,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        subject,
-                        style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: test['type'] == 'mock'
+                              ? Colors.blue.shade100
+                              : Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          test['type'] == 'mock'
+                              ? Icons.quiz
+                              : Icons.history_edu,
+                          size: 16,
+                          color: test['type'] == 'mock'
+                              ? Colors.blue.shade600
+                              : Colors.orange.shade600,
+                        ),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            "Solved: ${data['solved']}",
-                            style: AppTheme.captionStyle.copyWith(fontSize: 14),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              test['testId'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              test['date'],
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${test['score'].toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green.shade700,
                           ),
-                          Text(
-                            "Accuracy: ${data['accuracy'].toStringAsFixed(1)}%",
-                            style: AppTheme.captionStyle.copyWith(fontSize: 14),
-                          ),
-                          Text(
-                            "Avg. Time: ${data['avgTime'].toStringAsFixed(1)} min",
-                            style: AppTheme.captionStyle.copyWith(fontSize: 14),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              );
-            }),
-            const SizedBox(height: 16),
-
-            // Recent Tests Table
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Recent Tests",
-                      style: AppTheme.subheadingStyle.copyWith(fontSize: 18),
-                    ),
-                    const SizedBox(height: 12),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columnSpacing: 16,
-                        columns: const [
-                          DataColumn(label: Text('Test ID')),
-                          DataColumn(label: Text('Score (%)')),
-                          DataColumn(label: Text('Date')),
-                        ],
-                        rows: recentTests.map((test) {
-                          return DataRow(
-                            cells: [
-                              DataCell(Text(test['testId'])),
-                              DataCell(Text(test['score'].toStringAsFixed(1))),
-                              DataCell(Text(test['date'])),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
+                )),
+        ],
       ),
     );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 }

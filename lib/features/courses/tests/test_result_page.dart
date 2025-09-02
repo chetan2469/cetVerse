@@ -32,7 +32,6 @@ class _TestResultPageState extends State<TestResultPage> {
   bool _canViewResultInDetail = false;
   final Map<int, Widget> _renderedCache = {};
   bool _isWebViewInitialized = false;
-  bool _isFirstOpen = true;
 
   @override
   void initState() {
@@ -45,24 +44,6 @@ class _TestResultPageState extends State<TestResultPage> {
     await Future.delayed(const Duration(milliseconds: 500));
     setState(() {
       _isWebViewInitialized = true;
-    });
-    _simulateFirstOpen();
-  }
-
-  Future<void> _simulateFirstOpen() async {
-    if (widget.mcqs.isEmpty) return;
-
-    setState(() {
-      _selectedQuestionIndex = 0;
-      _isQuestionRendered = false;
-    });
-
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    setState(() {
-      _selectedQuestionIndex = null;
-      _isQuestionRendered = false;
-      _isFirstOpen = false;
     });
   }
 
@@ -100,7 +81,6 @@ class _TestResultPageState extends State<TestResultPage> {
     final userAnswer = widget.userAnswers[questionIndex];
     final mcq = widget.mcqs[questionIndex];
     final correctIndex = _answerToIndex(mcq['answer'] ?? 'A');
-
     if (userAnswer == -1) {
       return Colors.orange;
     } else if (userAnswer == correctIndex) {
@@ -114,7 +94,6 @@ class _TestResultPageState extends State<TestResultPage> {
     final userAnswer = widget.userAnswers[questionIndex];
     final mcq = widget.mcqs[questionIndex];
     final correctIndex = _answerToIndex(mcq['answer'] ?? 'A');
-
     if (userAnswer == -1) {
       return 'UNATTEMPTED';
     } else if (userAnswer == correctIndex) {
@@ -181,31 +160,26 @@ class _TestResultPageState extends State<TestResultPage> {
         child: CircularProgressIndicator(),
       );
     }
-
     try {
       final mcq = widget.mcqs[index];
       final userAnswer = widget.userAnswers[index];
       final correctIndex = _answerToIndex(mcq['answer'] ?? 'A');
-
       // Extract question data
       final questionMap = mcq['question'] as Map<String, dynamic>? ?? {};
       final String questionText =
           questionMap['text'] ?? 'No question provided.';
       final String questionImage = questionMap['image'] ?? '';
-
       // Extract options
       final optionsMap = mcq['options'] as Map<String, dynamic>? ?? {};
       final options = ['A', 'B', 'C', 'D'].map((letter) {
         final optionMap = optionsMap[letter] as Map<String, dynamic>? ?? {};
         return optionMap['text'] ?? '';
       }).toList();
-
       // Extract explanation
       final explanationMap = mcq['explanation'] as Map<String, dynamic>? ?? {};
       final String explanationText =
           explanationMap['text'] ?? 'No explanation provided.';
       final String explanationImage = explanationMap['image'] ?? '';
-
       // Combine text and image for question and explanation
       String finalQuestionText = "<b>Question ${index + 1}: </b>$questionText";
       if (questionImage.isNotEmpty) {
@@ -217,12 +191,10 @@ class _TestResultPageState extends State<TestResultPage> {
         finalExplanationText +=
             '<br/><img src="$explanationImage" width="200" height="40"/>';
       }
-
       // Map correct answer to option ID
       final String correctOptionId = 'id_${correctIndex + 1}';
       final String userAnswerId =
           userAnswer != -1 ? 'id_${userAnswer + 1}' : '';
-
       final questionWidget = GestureDetector(
         onHorizontalDragEnd: _onSwipeInDetails,
         child: Stack(
@@ -377,7 +349,6 @@ class _TestResultPageState extends State<TestResultPage> {
           ],
         ),
       );
-
       _renderedCache[index] = questionWidget;
       return questionWidget;
     } catch (e) {
@@ -434,7 +405,6 @@ class _TestResultPageState extends State<TestResultPage> {
     final wrongCount = attemptedCount - widget.correctCount;
     final accuracy =
         (widget.correctCount / attemptedCount * 100).toStringAsFixed(1);
-
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
