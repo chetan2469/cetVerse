@@ -3,7 +3,6 @@ import 'package:cet_verse/features/BoardPapersPage.dart';
 import 'package:cet_verse/features/ToppersNotesPage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:cet_verse/features/courses/level_subjects.dart';
@@ -22,57 +21,9 @@ class _PopularCoursesPageState extends State<PopularCoursesPage>
   @override
   bool get wantKeepAlive => true;
 
-  // Track initial loading until at least some images are ready (or timeout).
-  bool _initialLoading = true;
-
-  // Track per-card image readiness to end initial skeleton ASAP.
-  final Map<String, bool> _imgReady = {
-    '11th Standard': false,
-    '12th Standard': false,
-    'PYQ': false,
-    'Toppers Notes': false,
-    'Boards Papers': false,
-  };
-
-  Timer? _fallbackTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    // Safety timeout so skeleton doesn't stay forever (e.g., slow network).
-    _fallbackTimer =
-        Timer(const Duration(milliseconds: 200), _endInitialLoading);
-  }
-
-  @override
-  void dispose() {
-    _fallbackTimer?.cancel();
-    super.dispose();
-  }
-
-  void _markReady(String key) {
-    if (_imgReady[key] == true) return;
-    _imgReady[key] = true;
-    // As soon as ANY first image is ready, drop the page skeleton.
-    if (_initialLoading && _imgReady.values.any((v) => v)) {
-      _endInitialLoading();
-    }
-    setState(() {}); // refresh to update per-card shimmer if needed
-  }
-
-  void _endInitialLoading() {
-    if (!_initialLoading) return;
-    _initialLoading = false;
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
-    if (_initialLoading) {
-      return _buildPageSkeleton(context);
-    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -96,7 +47,6 @@ class _PopularCoursesPageState extends State<PopularCoursesPage>
                   bgColor: AppTheme.designColor ?? Colors.green.shade100,
                   onTap: () => _navigateToCourseDetails(
                       context, "11th Standard", "20% Weightage", "4.9", ""),
-                  onImageReady: () => _markReady('11th Standard'),
                 ),
               ),
               const SizedBox(width: 16),
@@ -110,7 +60,6 @@ class _PopularCoursesPageState extends State<PopularCoursesPage>
                   bgColor: AppTheme.businessColor ?? Colors.blue.shade100,
                   onTap: () => _navigateToCourseDetails(
                       context, "12th Standard", "80% Weightage", "4.9", ""),
-                  onImageReady: () => _markReady('12th Standard'),
                 ),
               ),
             ],
@@ -129,7 +78,6 @@ class _PopularCoursesPageState extends State<PopularCoursesPage>
             onTap: () => _navigateToCourseDetails(
                 context, "PYQ", "Previous Year Questions", "4.9", ""),
             isFullWidth: true,
-            onImageReady: () => _markReady('PYQ'),
           ),
 
           const SizedBox(height: 16),
@@ -154,7 +102,6 @@ class _PopularCoursesPageState extends State<PopularCoursesPage>
                       ),
                     )
                   },
-                  onImageReady: () => _markReady('Toppers Notes'),
                 ),
               ),
               const SizedBox(width: 16),
@@ -174,7 +121,6 @@ class _PopularCoursesPageState extends State<PopularCoursesPage>
                       ),
                     )
                   },
-                  onImageReady: () => _markReady('Boards Papers'),
                 ),
               ),
             ],
@@ -199,108 +145,6 @@ class _PopularCoursesPageState extends State<PopularCoursesPage>
               ),
         ),
       ],
-    );
-  }
-
-  // Initial page-level skeleton (mirrors layout)
-  Widget _buildPageSkeleton(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _shimmerBox(width: 160, height: 20, radius: 8),
-          const SizedBox(height: 16),
-
-          // Row 1 skeleton
-          Row(
-            children: [
-              Expanded(child: _cardSkeleton(isFullWidth: false)),
-              const SizedBox(width: 16),
-              Expanded(child: _cardSkeleton(isFullWidth: false)),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Full width skeleton
-          _cardSkeleton(isFullWidth: true),
-          const SizedBox(height: 16),
-
-          // Row 2 skeleton
-          Row(
-            children: [
-              Expanded(child: _cardSkeleton(isFullWidth: false)),
-              const SizedBox(width: 16),
-              Expanded(child: _cardSkeleton(isFullWidth: false)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _cardSkeleton({required bool isFullWidth}) {
-    final h = isFullWidth ? 160.0 : 100.0;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: _shimmerFill(height: h),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _shimmerBox(width: 120, height: 16, radius: 8),
-                const SizedBox(height: 6),
-                _shimmerBox(width: 160, height: 12, radius: 8),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _shimmerFill({required double height}) {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
-      child: Container(
-          height: height, width: double.infinity, color: Colors.white),
-    );
-  }
-
-  Widget _shimmerBox(
-      {double width = double.infinity,
-      required double height,
-      double radius = 8}) {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
     );
   }
 
@@ -330,7 +174,6 @@ class _PopularCourseCard extends StatefulWidget {
   final Color bgColor;
   final VoidCallback onTap;
   final bool isFullWidth;
-  final VoidCallback? onImageReady;
 
   const _PopularCourseCard({
     required this.title,
@@ -340,7 +183,6 @@ class _PopularCourseCard extends StatefulWidget {
     required this.bgColor,
     required this.onTap,
     this.isFullWidth = false,
-    this.onImageReady,
   });
 
   @override
@@ -348,8 +190,6 @@ class _PopularCourseCard extends StatefulWidget {
 }
 
 class _PopularCourseCardState extends State<_PopularCourseCard> {
-  bool _isCached = false;
-  bool _notifiedReady = false;
   late final BaseCacheManager _cacheManager;
 
   @override
@@ -364,24 +204,6 @@ class _PopularCourseCardState extends State<_PopularCourseCard> {
         fileService: HttpFileService(),
       ),
     );
-    _precheckCache();
-  }
-
-  Future<void> _precheckCache() async {
-    final entry = await _cacheManager.getFileFromCache(widget.image);
-    if (!mounted) return;
-    if (entry != null && await entry.file.exists()) {
-      setState(() => _isCached = true);
-      _notifyReadyOnce();
-    }
-  }
-
-  void _notifyReadyOnce() {
-    if (_notifiedReady) return;
-    _notifiedReady = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onImageReady?.call();
-    });
   }
 
   @override
@@ -483,70 +305,27 @@ class _PopularCourseCardState extends State<_PopularCourseCard> {
   }
 
   Widget _buildCachedImage(double imageHeight) {
-    // If we already know it’s cached, render directly with provider.
-    if (_isCached) {
-      return Image(
-        image: CachedNetworkImageProvider(
-          widget.image,
-          cacheManager: _cacheManager,
-        ),
-        height: imageHeight,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        // Prevent “blink” when parent rebuilds:
-        gaplessPlayback: true,
-        filterQuality: FilterQuality.medium,
-      );
-    }
-
-    // Otherwise use CachedNetworkImage with shimmer only during first fetch.
     return CachedNetworkImage(
       imageUrl: widget.image,
       cacheManager: _cacheManager,
       height: imageHeight,
       width: double.infinity,
       fit: BoxFit.cover,
-      // Show shimmer only while downloading (no shimmer after cached).
-      placeholder: (_, __) => _imageShimmer(height: imageHeight),
+      placeholder: (_, __) => Container(
+        height: imageHeight,
+        width: double.infinity,
+        color: Colors.grey.shade300,
+      ),
       errorWidget: (_, __, ___) => Container(
         height: imageHeight,
         color: Colors.grey[300],
         child: const Center(child: Icon(Icons.error, color: Colors.red)),
       ),
-      // Kill cross-fade to avoid flicker:
-      fadeInDuration: Duration.zero,
-      fadeOutDuration: Duration.zero,
-      // Keep previous frame when rebuilding:
+      fadeInDuration: const Duration(milliseconds: 300),
+      fadeOutDuration: const Duration(milliseconds: 300),
       useOldImageOnUrlChange: true,
       memCacheHeight:
           (imageHeight * MediaQuery.of(context).devicePixelRatio).round(),
-      imageBuilder: (ctx, provider) {
-        _notifyReadyOnce();
-        // After first successful load, we consider it cached for future rebuilds.
-        if (!_isCached) {
-          // Do not call setState synchronously during build.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _isCached = true);
-          });
-        }
-        return Image(
-          image: provider,
-          height: imageHeight,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-          filterQuality: FilterQuality.medium,
-        );
-      },
-    );
-  }
-
-  Widget _imageShimmer({required double height}) {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
-      child: Container(
-          height: height, width: double.infinity, color: Colors.white),
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:cet_verse/ui/theme/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -70,12 +71,17 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading MCQs: $e')),
+        SnackBar(
+          content: Text('Error loading MCQs: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       );
     }
   }
 
-  // ---------- Upload JSON (unchanged behavior, with minor guards) ----------
+  // ---------- Upload JSON ----------
   Future<Map<String, dynamic>> _validateJson(String jsonString) async {
     try {
       final List<dynamic> jsonData = jsonDecode(jsonString);
@@ -173,7 +179,12 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('MCQs uploaded successfully!')),
+        SnackBar(
+          content: const Text('MCQs uploaded successfully!'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       );
       await _fetchMcqs();
     } catch (e) {
@@ -274,16 +285,35 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete MCQs'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+            const SizedBox(width: 8),
+            const Text('Delete MCQs', style: TextStyle(fontSize: 16)),
+          ],
+        ),
         content: Text(
-            'Delete ${_selectedIds.length} selected MCQ(s)? This cannot be undone.'),
+            'Delete ${_selectedIds.length} selected MCQ(s)? This cannot be undone.',
+            style: const TextStyle(fontSize: 14)),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete')),
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text('Delete', style: TextStyle(fontSize: 14)),
+          ),
         ],
       ),
     );
@@ -299,14 +329,24 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_selectedIds.length} MCQ(s) deleted.')),
+        SnackBar(
+          content: Text('${_selectedIds.length} MCQ(s) deleted.'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       );
       _exitSelectionMode();
       await _fetchMcqs();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
+        SnackBar(
+          content: Text('Delete failed: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       );
     }
   }
@@ -324,109 +364,455 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        key: _scaffoldKey,
-        drawer: const MyDrawer(),
-        backgroundColor: AppTheme.scaffoldBackground,
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: _selectionMode
-                ? _exitSelectionMode
-                : () => Navigator.pop(context),
-          ),
-          title: Text(
-            "${widget.chapter} MCQs",
-            style: AppTheme.subheadingStyle.copyWith(fontSize: 12),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 1,
-          actions: [
-            if (_selectionMode) ...[
-              IconButton(
-                tooltip: 'Select All',
-                onPressed: _selectAll,
-                icon: const Icon(Icons.done_all, color: Colors.black),
-              ),
-              IconButton(
-                tooltip: 'Delete Selected',
-                onPressed: _deleteSelected,
-                icon: const Icon(Icons.delete, color: Colors.red),
-              ),
-            ] else ...[
-              IconButton(
-                icon: const Icon(Icons.add, color: Colors.black),
-                tooltip: 'Add New MCQ',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AddMCQ(
-                        level: widget.level,
-                        subject: widget.subject,
-                        chapter: widget.chapter,
-                      ),
-                    ),
-                  ).then((_) => _fetchMcqs());
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.upload_file, color: Colors.black),
-                tooltip: 'Upload JSON MCQs',
-                onPressed: _isUploading ? null : _pickAndUploadJson,
-              ),
-            ],
-          ],
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: const MyDrawer(),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        toolbarHeight: 48, // Reduced height
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20),
+          onPressed: _selectionMode
+              ? _exitSelectionMode
+              : () => Navigator.pop(context),
         ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _allMcqs.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No MCQs found.',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
-                    ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        if (_isUploading)
-                          Column(
-                            children: [
-                              LinearProgressIndicator(
-                                  value: _uploadProgress, minHeight: 4),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Uploading: ${(_uploadProgress * 100).toStringAsFixed(0)}%',
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        if (_uploadErrorMessage != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: Text(
-                              _uploadErrorMessage!,
-                              style: const TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        Expanded(
-                          child: ListView.builder(
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: _allMcqs.length,
-                            itemBuilder: (context, index) {
-                              final mcq = _allMcqs[index];
-                              final docId = mcq['docId'] as String;
-                              return _buildMCQPreviewCard(
-                                  mcq, index + 1, docId);
-                            },
-                          ),
-                        ),
-                      ],
+        title: Text(
+          "${widget.chapter} MCQs",
+          style: AppTheme.subheadingStyle.copyWith(
+            fontSize: 18, // Updated to 18
+            color: Colors.black,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          if (_selectionMode) ...[
+            IconButton(
+              tooltip: 'Select All',
+              onPressed: _selectAll,
+              icon: const Icon(Icons.done_all,
+                  color: Colors.indigoAccent, size: 20),
+            ),
+            IconButton(
+              tooltip: 'Delete Selected',
+              onPressed: _deleteSelected,
+              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+            ),
+          ] else ...[
+            IconButton(
+              icon: const Icon(Icons.add, color: Colors.indigoAccent, size: 20),
+              tooltip: 'Add New MCQ',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddMCQ(
+                      level: widget.level,
+                      subject: widget.subject,
+                      chapter: widget.chapter,
                     ),
                   ),
+                ).then((_) => _fetchMcqs());
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.upload_file,
+                  color: Colors.indigoAccent, size: 20),
+              tooltip: 'Upload JSON MCQs',
+              onPressed: _isUploading ? null : _pickAndUploadJson,
+            ),
+          ],
+        ],
+      ),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(16), // Reduced padding
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 12), // Reduced spacing
+                  Text(
+                    "MCQ Questions",
+                    style: AppTheme.subheadingStyle.copyWith(
+                      fontSize: 16, // Updated to 16
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12), // Reduced spacing
+                  _buildContent(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Card(
+      elevation: 2, // Reduced elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      color: Colors.white,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      child: Padding(
+        padding: const EdgeInsets.all(16), // Reduced padding
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8), // Reduced padding
+              decoration: BoxDecoration(
+                color: Colors.indigoAccent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.quiz,
+                color: Colors.white,
+                size: 24, // Reduced size
+              ),
+            ),
+            const SizedBox(width: 16), // Reduced spacing
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.chapter,
+                    style: AppTheme.subheadingStyle.copyWith(
+                      fontSize: 16, // Updated to 16
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4), // Reduced spacing
+                  Text(
+                    '${widget.subject} - Chapter MCQs',
+                    style: AppTheme.captionStyle.copyWith(
+                      fontSize: 14, // Updated to 14
+                      color: Colors.black87,
+                    ),
+                  ),
+                  if (_allMcqs.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2), // Reduced padding
+                      decoration: BoxDecoration(
+                        color: Colors.indigoAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${_allMcqs.length} Questions',
+                        style: TextStyle(
+                          fontSize: 12, // Updated to 12
+                          fontWeight: FontWeight.w500,
+                          color: Colors.indigoAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return _buildShimmerLoading();
+    }
+
+    if (_allMcqs.isEmpty) {
+      return _buildEmptyCard();
+    }
+
+    return Column(
+      children: [
+        if (_isUploading) _buildUploadProgress(),
+        if (_uploadErrorMessage != null) _buildUploadError(),
+        ..._allMcqs.map((mcq) {
+          final index = _allMcqs.indexOf(mcq);
+          final docId = mcq['docId'] as String;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12), // Reduced spacing
+            child: _buildMCQPreviewCard(mcq, index + 1, docId),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return Column(
+      children: List.generate(5, (index) => _buildShimmerMCQCard()),
+    );
+  }
+
+  Widget _buildShimmerMCQCard() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12), // Reduced spacing
+      child: Card(
+        elevation: 2, // Reduced elevation
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        color: Colors.white,
+        shadowColor: Colors.grey.withOpacity(0.2),
+        child: Padding(
+          padding: const EdgeInsets.all(16), // Reduced padding
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Shimmer.fromColors(
+                    baseColor: Colors.grey.shade300,
+                    highlightColor: Colors.grey.shade100,
+                    child: Container(
+                      width: 60,
+                      height: 16, // Reduced height
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: List.generate(
+                        3,
+                        (index) => Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Shimmer.fromColors(
+                                baseColor: Colors.grey.shade300,
+                                highlightColor: Colors.grey.shade100,
+                                child: Container(
+                                  width: 20, // Reduced size
+                                  height: 20, // Reduced size
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ),
+                            )),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8), // Reduced spacing
+              Shimmer.fromColors(
+                baseColor: Colors.grey.shade300,
+                highlightColor: Colors.grey.shade100,
+                child: Container(
+                  width: double.infinity,
+                  height: 14, // Reduced height
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6), // Reduced spacing
+              Shimmer.fromColors(
+                baseColor: Colors.grey.shade300,
+                highlightColor: Colors.grey.shade100,
+                child: Container(
+                  width: 180, // Reduced width
+                  height: 14, // Reduced height
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyCard() {
+    return Card(
+      elevation: 2, // Reduced elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      color: Colors.white,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      child: Padding(
+        padding: const EdgeInsets.all(20), // Reduced padding
+        child: Column(
+          children: [
+            const Icon(
+              Icons.info_outline,
+              color: Colors.grey,
+              size: 40, // Reduced size
+            ),
+            const SizedBox(height: 12), // Reduced spacing
+            Text(
+              'No MCQs available',
+              style: AppTheme.subheadingStyle.copyWith(
+                fontSize: 16, // Updated to 16
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6), // Reduced spacing
+            Text(
+              'Add MCQs to get started with practice questions',
+              style: AppTheme.captionStyle.copyWith(
+                fontSize: 14, // Updated to 14
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12), // Reduced spacing
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddMCQ(
+                      level: widget.level,
+                      subject: widget.subject,
+                      chapter: widget.chapter,
+                    ),
+                  ),
+                ).then((_) => _fetchMcqs());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigoAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 8), // Reduced padding
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 2, // Reduced elevation
+              ),
+              child: const Text(
+                'Add First MCQ',
+                style: TextStyle(
+                  fontSize: 14, // Updated to 14
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUploadProgress() {
+    return Card(
+      elevation: 2, // Reduced elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      color: Colors.white,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      margin: const EdgeInsets.only(bottom: 12), // Reduced margin
+      child: Padding(
+        padding: const EdgeInsets.all(16), // Reduced padding
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6), // Reduced padding
+                  decoration: BoxDecoration(
+                    color: Colors.indigoAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.upload_file,
+                    color: Colors.indigoAccent,
+                    size: 18, // Reduced size
+                  ),
+                ),
+                const SizedBox(width: 10), // Reduced spacing
+                Text(
+                  'Uploading MCQs...',
+                  style: AppTheme.subheadingStyle.copyWith(
+                    fontSize: 16, // Updated to 16
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12), // Reduced spacing
+            LinearProgressIndicator(
+              value: _uploadProgress,
+              backgroundColor: Colors.grey.shade200,
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Colors.indigoAccent),
+              minHeight: 4, // Reduced height
+            ),
+            const SizedBox(height: 6), // Reduced spacing
+            Text(
+              '${(_uploadProgress * 100).toStringAsFixed(0)}% Complete',
+              style: AppTheme.captionStyle.copyWith(
+                fontSize: 14, // Updated to 14
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUploadError() {
+    return Card(
+      elevation: 2, // Reduced elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      color: Colors.white,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      margin: const EdgeInsets.only(bottom: 12), // Reduced margin
+      child: Padding(
+        padding: const EdgeInsets.all(16), // Reduced padding
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6), // Reduced padding
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                color: Colors.red,
+                size: 18, // Reduced size
+              ),
+            ),
+            const SizedBox(width: 10), // Reduced spacing
+            Expanded(
+              child: Text(
+                _uploadErrorMessage!,
+                style: AppTheme.captionStyle.copyWith(
+                  fontSize: 14, // Updated to 14
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -435,99 +821,197 @@ class _ChapterWiseMcqState extends State<ChapterWiseMcq> {
       Map<String, dynamic> mcq, int number, String docId) {
     final questionMap = (mcq['question'] as Map<String, dynamic>?) ?? const {};
     final questionText = (questionMap['text'] as String?) ?? '';
-
     final checked = _selectedIds.contains(docId);
+    final isFirstItem = number == 1;
 
     return Card(
       key: ValueKey(docId),
-      elevation: 4,
+      elevation: 2, // Reduced elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       color: Colors.white,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shadowColor: Colors.grey.withOpacity(0.2),
       child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onLongPress: () => _enterSelectionMode(docId),
         onTap: () {
           if (_selectionMode) {
             _toggleSelected(docId, !checked);
           } else {
-            // Open view page (old behavior)
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => DisplayMcq(mcq: mcq)),
             );
           }
         },
+        splashColor: Colors.indigoAccent.withOpacity(0.2),
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.all(16), // Reduced padding
+          child: Row(
             children: [
-              // Top row: Q no. + actions / checkbox
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Q$number.',
-                    style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
+              Container(
+                width: 20, // Reduced size
+                height: 20, // Reduced size
+                decoration: BoxDecoration(
+                  color:
+                      isFirstItem ? Colors.indigoAccent : Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    '$number',
+                    style: const TextStyle(
+                      fontSize: 10, // Updated to 10
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                  Row(
-                    children: [
-                      if (_selectionMode)
-                        Checkbox(
-                          value: checked,
-                          onChanged: (v) => _toggleSelected(docId, v ?? false),
-                        )
-                      else ...[
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          tooltip: 'Edit MCQ',
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => UpdateMCQ(
-                                  level: widget.level,
-                                  subject: widget.subject,
-                                  chapter: widget.chapter,
-                                  mcq: mcq,
-                                  docId: docId,
-                                ),
+                ),
+              ),
+              const SizedBox(width: 8), // Reduced spacing
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            questionText.isNotEmpty
+                                ? questionText
+                                : 'Question $number',
+                            style: AppTheme.subheadingStyle.copyWith(
+                              fontSize: 14, // Updated to 14
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isFirstItem) ...[
+                          const SizedBox(width: 6), // Reduced spacing
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2, // Reduced padding
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'FIRST',
+                              style: TextStyle(
+                                fontSize: 10, // Updated to 10
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
-                            ).then((_) => _fetchMcqs());
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.visibility),
-                          tooltip: 'View MCQ',
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => DisplayMcq(mcq: mcq)),
-                            );
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          tooltip: 'Delete MCQ',
-                          onPressed: () => _deleteSingle(docId),
-                        ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 4), // Reduced spacing
+                    Text(
+                      'MCQ Practice Question',
+                      style: AppTheme.captionStyle.copyWith(
+                        fontSize: 12, // Updated to 12
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                questionText,
-                style: AppTheme.subheadingStyle.copyWith(fontSize: 14),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              _buildTrailingWidget(checked, docId),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildTrailingWidget(bool checked, String docId) {
+    if (_selectionMode) {
+      return Checkbox(
+        value: checked,
+        onChanged: (v) => _toggleSelected(docId, v ?? false),
+        activeColor: Colors.indigoAccent,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+      );
+    } else {
+      return PopupMenuButton<String>(
+        onSelected: (value) {
+          switch (value) {
+            case 'edit':
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UpdateMCQ(
+                    level: widget.level,
+                    subject: widget.subject,
+                    chapter: widget.chapter,
+                    mcq: _allMcqs.firstWhere((m) => m['docId'] == docId),
+                    docId: docId,
+                  ),
+                ),
+              ).then((_) => _fetchMcqs());
+              break;
+            case 'view':
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DisplayMcq(
+                    mcq: _allMcqs.firstWhere((m) => m['docId'] == docId),
+                  ),
+                ),
+              );
+              break;
+            case 'delete':
+              _deleteSingle(docId);
+              break;
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'edit',
+            child: Row(
+              children: [
+                Icon(Icons.edit, color: Colors.indigoAccent, size: 18),
+                const SizedBox(width: 10),
+                const Text('Edit MCQ', style: TextStyle(fontSize: 14)),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: 'view',
+            child: Row(
+              children: [
+                Icon(Icons.visibility, color: Colors.indigoAccent, size: 18),
+                const SizedBox(width: 10),
+                const Text('View MCQ', style: TextStyle(fontSize: 14)),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                const SizedBox(width: 10),
+                const Text('Delete MCQ', style: TextStyle(fontSize: 14)),
+              ],
+            ),
+          ),
+        ],
+        icon: const Icon(
+          Icons.more_vert,
+          color: Colors.indigoAccent,
+          size: 18,
+        ),
+      );
+    }
   }
 }

@@ -419,6 +419,13 @@ class _TestResultPageState extends State<TestResultPage> {
           iconTheme: const IconThemeData(color: Colors.black),
           actions: [
             IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.blue),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              tooltip: 'Go to Home',
+            ),
+            IconButton(
               icon: const Icon(Icons.home, color: Colors.blue),
               onPressed: _goToHome,
               tooltip: 'Go to Home',

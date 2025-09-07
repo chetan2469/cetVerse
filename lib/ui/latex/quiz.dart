@@ -1,3 +1,4 @@
+import 'package:cet_verse/features/courses/mcq/display_mcq.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tex/flutter_tex.dart';
 
@@ -19,6 +20,7 @@ class TeXViewQuizExample extends StatefulWidget {
     required this.option4,
     required this.correctOptionId,
     required this.explaination,
+    required PaperThemeColors paperThemeColors,
   });
 
   @override

@@ -39,12 +39,11 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _filteredMcqs = [];
   bool _isLoading = true;
   String? _errorMessage;
-  final Map<int, Widget> _questionCache = {}; // Keep question cache
+  final Map<int, Widget> _questionCache = {};
   final TimerController _timerController = TimerController();
   String _selectedSubject = 'All';
   bool _hasConfirmedStart = false;
 
-  // Animation controllers - simplified
   late AnimationController _loadingController;
   late Animation<double> _loadingAnimation;
 
@@ -52,7 +51,6 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // Only keep loading animation controller
     _loadingController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -91,172 +89,175 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
           child: Container(
             width: MediaQuery.of(context).size.width,
             height: MediaQuery.of(context).size.height,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.blue.shade50,
+                  Color(0xFFF8F8F8), // Light gray
                   Colors.white,
-                  Colors.purple.shade50,
+                  Color(0xFFF5F5F5), // Off-white
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.blue.shade400,
-                              Colors.purple.shade400
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(40),
+            padding: const EdgeInsets.all(12.0),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
                         ),
-                        child: const Icon(
-                          Icons.assignment,
-                          color: Colors.white,
-                          size: 40,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'MHT CET ${widget.year}',
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${widget.pyqType.toUpperCase()} Test',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      ],
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
                         children: [
-                          _buildModernStatColumn('$totalQuestions', 'Questions',
-                              Icons.quiz, Colors.blue),
-                          _buildModernStatColumn('180 min', 'Duration',
-                              Icons.schedule, Colors.green),
-                          _buildModernStatColumn(
-                              '200', 'Marks', Icons.star, Colors.orange),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 40),
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.info_outline,
-                              color: Colors.blue.shade600, size: 24),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Test Instructions',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade600,
+                              borderRadius: BorderRadius.circular(40),
+                              border: Border.all(
+                                  color: Colors.grey.shade400, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.assignment,
+                              color: Colors.white,
+                              size: 32,
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'MHT CET ${widget.year}',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blueGrey,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${widget.pyqType.toUpperCase()} Test',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildPaperStatColumn('$totalQuestions',
+                                  'Questions', Icons.quiz, Colors.blueGrey),
+                              _buildPaperStatColumn('180 min', 'Duration',
+                                  Icons.schedule, Colors.blueGrey),
+                              _buildPaperStatColumn(
+                                  '200', 'Marks', Icons.star, Colors.blueGrey),
+                            ],
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      _buildModernInstruction(
-                        Icons.timer,
-                        'Auto-submit when time expires',
-                        Colors.red,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildModernInstruction(
-                        Icons.radio_button_checked,
-                        'Multiple choice questions with single correct answer',
-                        Colors.blue,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildModernInstruction(
-                        Icons.pause_circle_outline,
-                        'Test cannot be paused for fair ranking',
-                        Colors.orange,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 40),
-                Container(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      setState(() => _hasConfirmedStart = true);
-                      _fetchMcqs();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 4,
-                    ),
-                    child: const Text(
-                      'Start Test',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.info_outline,
+                                color: Colors.blueGrey, size: 24),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Test Instructions',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPaperInstruction(
+                          Icons.timer,
+                          'Auto-submit when time expires',
+                          Colors.red,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPaperInstruction(
+                          Icons.radio_button_checked,
+                          'Multiple choice questions with single correct answer',
+                          Colors.blueGrey,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPaperInstruction(
+                          Icons.pause_circle_outline,
+                          'Test cannot be paused for fair ranking',
+                          Colors.orange,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        setState(() => _hasConfirmedStart = true);
+                        _fetchMcqs();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueGrey,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side:
+                              BorderSide(color: Colors.grey.shade300, width: 2),
+                        ),
+                        elevation: 6,
+                      ),
+                      child: const Text(
+                        'Start Test',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -264,15 +265,16 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildModernStatColumn(
+  Widget _buildPaperStatColumn(
       String value, String label, IconData icon, Color color) {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
           ),
           child: Icon(icon, color: color, size: 24),
         ),
@@ -282,7 +284,7 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: Colors.blueGrey,
           ),
         ),
         const SizedBox(height: 4),
@@ -297,15 +299,16 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildModernInstruction(IconData icon, String text, Color color) {
+  Widget _buildPaperInstruction(IconData icon, String text, Color color) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
           ),
           child: Icon(icon, color: color, size: 16),
         ),
@@ -315,7 +318,7 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
             text,
             style: const TextStyle(
               fontSize: 15,
-              color: Colors.black87,
+              color: Colors.blueGrey,
               height: 1.4,
             ),
           ),
@@ -372,7 +375,7 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
 
     setState(() {
       _selectedSubject = subject;
-      _questionCache.clear(); // Clear cache when filtering
+      _questionCache.clear();
       if (subject == 'All') {
         _filteredMcqs = List.from(_mcqs);
       } else {
@@ -387,7 +390,6 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
     }
   }
 
-  // Simplified navigation without animations
   void _nextQuestion() {
     if (_currentIndex < _filteredMcqs.length - 1 && !_isTransitioning) {
       setState(() {
@@ -451,7 +453,6 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
     if (_hasSubmitted || _isTransitioning) return;
     final optionIndex = int.parse(id.split('_')[1]) - 1;
 
-    // Update only the answer, don't rebuild the entire widget
     final originalIndex = _mcqs.indexOf(_filteredMcqs[_currentIndex]);
     if (originalIndex != -1) {
       if (userAnswers[originalIndex] == optionIndex) {
@@ -460,14 +461,10 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
         userAnswers[originalIndex] = optionIndex;
       }
 
-      // Only update the specific question cache, not rebuild
       _questionCache.remove(_currentIndex);
 
-      // Minimal state update to avoid rebuild
       if (mounted) {
-        setState(() {
-          // Just trigger a minimal rebuild for answer selection
-        });
+        setState(() {});
       }
     }
   }
@@ -485,35 +482,38 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
         return AlertDialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.shade300, width: 2),
           ),
           title: const Text(
             'Submit Test?',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
+              color: Colors.blueGrey,
             ),
           ),
           content: Container(
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
             ),
             padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildSubmitStatRow(Icons.check_circle, 'Attempted',
+                _buildPaperSubmitStatRow(Icons.check_circle, 'Attempted',
                     '$attemptedCount', Colors.green),
                 const SizedBox(height: 8),
-                _buildSubmitStatRow(Icons.radio_button_unchecked, 'Unattempted',
-                    '$unattemptedCount', Colors.red),
+                _buildPaperSubmitStatRow(Icons.radio_button_unchecked,
+                    'Unattempted', '$unattemptedCount', Colors.red),
                 const SizedBox(height: 8),
-                _buildSubmitStatRow(Icons.bookmark, 'For Review',
+                _buildPaperSubmitStatRow(Icons.bookmark, 'For Review',
                     '$reviewCount', Colors.orange),
                 const SizedBox(height: 8),
-                _buildSubmitStatRow(
-                    Icons.schedule, 'Time Left', timeLeft, Colors.blue),
+                _buildPaperSubmitStatRow(
+                    Icons.schedule, 'Time Left', timeLeft, Colors.blueGrey),
               ],
             ),
           ),
@@ -523,8 +523,15 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
               style: TextButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                side: BorderSide(color: Colors.grey.shade300, width: 1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
               ),
-              child: const Text('Cancel'),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -535,7 +542,8 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
+                  side: const BorderSide(color: Colors.green, width: 1),
                 ),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -548,7 +556,7 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildSubmitStatRow(
+  Widget _buildPaperSubmitStatRow(
       IconData icon, String label, String value, Color color) {
     return Row(
       children: [
@@ -556,7 +564,10 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
         const SizedBox(width: 12),
         Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            fontWeight: FontWeight.w500,
+            color: Colors.blueGrey,
+          ),
         ),
         const Spacer(),
         Text(
@@ -677,11 +688,8 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
         reviewedQuestions.add(originalIndex);
       }
 
-      // Minimal state update
       if (mounted) {
-        setState(() {
-          // Just trigger update for review status
-        });
+        setState(() {});
       }
     }
   }
@@ -712,20 +720,21 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
             ),
             child: IconButton(
-              icon: const Icon(Icons.menu, color: Colors.black87),
-              onPressed: () => scaffoldKey.currentState?.openDrawer(),
+              icon: const Icon(Icons.arrow_back, color: Colors.blueGrey),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
         ),
-        title: Text(
-          'PYQ ${widget.year} Test',
-          style: const TextStyle(
+        title: const Text(
+          'PYQ Test',
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: Colors.blueGrey,
           ),
         ),
         backgroundColor: Colors.white,
@@ -753,22 +762,7 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
                   ? _buildErrorScreen()
                   : _buildMainContent(
                       scaffoldKey, isPcm, attemptedCount, totalQuestions),
-      floatingActionButton: Container(
-        margin: const EdgeInsets.only(bottom: 80),
-        child: FloatingActionButton.extended(
-          onPressed: _hasSubmitted || _isTransitioning
-              ? null
-              : _showSubmitConfirmation,
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          icon: const Icon(Icons.check),
-          label: const Text(
-            'Submit Test',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-      ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -783,9 +777,12 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
             color: Colors.grey.shade400,
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Please confirm to start the test',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+            ),
           ),
         ],
       ),
@@ -807,8 +804,9 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
                   Container(
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -821,8 +819,10 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
                                 margin:
                                     const EdgeInsets.symmetric(horizontal: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                      color: Colors.grey.shade300, width: 1),
                                 ),
                               ),
                             )),
@@ -831,8 +831,9 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
                   Container(
                     height: 400,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
                     ),
                   ),
                 ],
@@ -843,8 +844,9 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -854,15 +856,14 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blueGrey),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
+                const Text(
                   'Loading Questions...',
                   style: TextStyle(
-                    color: Colors.blue.shade700,
+                    color: Colors.blueGrey,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -881,7 +882,8 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300, width: 2),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.1),
@@ -895,16 +897,16 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
           children: [
             Icon(
               Icons.error_outline,
-              color: Colors.red.shade400,
+              color: Colors.red,
               size: 64,
             ),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'Oops! Something went wrong',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
+                color: Colors.blueGrey,
               ),
             ),
             const SizedBox(height: 8),
@@ -919,12 +921,13 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
               icon: const Icon(Icons.refresh),
               label: const Text('Try Again'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade600,
+                backgroundColor: Colors.blueGrey,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
+                  side: BorderSide(color: Colors.grey.shade300, width: 1),
                 ),
               ),
             ),
@@ -943,6 +946,9 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.grey.withOpacity(0.1),
@@ -958,13 +964,14 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
                   ),
                   child: Text(
                     'Attempted: $attemptedCount/$totalQuestions',
-                    style: TextStyle(
-                      color: Colors.blue.shade700,
+                    style: const TextStyle(
+                      color: Colors.blueGrey,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -973,11 +980,12 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
               const SizedBox(width: 16),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.grey.shade300, width: 1),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.menu),
+                  icon: const Icon(Icons.menu, color: Colors.blueGrey),
                   onPressed: () => scaffoldKey.currentState?.openEndDrawer(),
                 ),
               ),
@@ -991,21 +999,21 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border(
-              bottom: BorderSide(color: Colors.grey.shade200),
+              bottom: BorderSide(color: Colors.grey.shade300, width: 1),
             ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildFilterButton('All'),
-              _buildFilterButton('Physics'),
-              _buildFilterButton('Chemistry'),
-              _buildFilterButton(isPcm ? 'Maths' : 'Biology'),
+              _buildPaperFilterButton('All'),
+              _buildPaperFilterButton('Physics'),
+              _buildPaperFilterButton('Chemistry'),
+              _buildPaperFilterButton(isPcm ? 'Maths' : 'Biology'),
             ],
           ),
         ),
 
-        // Question Content - Remove animations, use direct widget
+        // Question Content
         Expanded(
           child: _filteredMcqs.isNotEmpty &&
                   _currentIndex >= 0 &&
@@ -1022,7 +1030,7 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
                   },
                   child: PyqQuestionCard(
                     key: ValueKey(
-                        'question_${_filteredMcqs[_currentIndex]['docId']}'), // Stable key
+                        'question_${_filteredMcqs[_currentIndex]['docId']}'),
                     index: _currentIndex,
                     mcq: _filteredMcqs[_currentIndex],
                     userAnswers: userAnswers,
@@ -1038,60 +1046,100 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
               : const Center(
                   child: Text(
                     'No questions available for selected filter',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.blueGrey,
+                    ),
                   ),
                 ),
-        ),
-
-        // Navigation Controls
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNavButton(
-                icon: Icons.arrow_back_ios,
-                label: 'Previous',
-                onPressed: _currentIndex > 0 && !_isTransitioning
-                    ? _previousQuestion
-                    : null,
-                color: Colors.blue,
-              ),
-              Text(
-                '${_currentIndex + 1} / ${_filteredMcqs.length}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              _buildNavButton(
-                icon: Icons.arrow_forward_ios,
-                label: 'Next',
-                onPressed: _currentIndex < _filteredMcqs.length - 1 &&
-                        !_isTransitioning
-                    ? _nextQuestion
-                    : null,
-                color: Colors.blue,
-              ),
-            ],
-          ),
         ),
       ],
     );
   }
 
-  Widget _buildNavButton({
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Question counter
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade300, width: 1),
+              ),
+              child: Text(
+                '${_currentIndex + 1} / ${_filteredMcqs.length}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueGrey,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Navigation buttons
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPaperNavButton(
+                    icon: Icons.arrow_back_ios,
+                    label: 'Previous',
+                    onPressed: _currentIndex > 0 && !_isTransitioning
+                        ? _previousQuestion
+                        : null,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildPaperNavButton(
+                    icon: Icons.arrow_forward_ios,
+                    label: 'Next',
+                    onPressed: _currentIndex < _filteredMcqs.length - 1 &&
+                            !_isTransitioning
+                        ? _nextQuestion
+                        : null,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildPaperNavButton(
+                    icon: Icons.check,
+                    label: 'Submit',
+                    onPressed: _hasSubmitted || _isTransitioning
+                        ? null
+                        : _showSubmitConfirmation,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaperNavButton({
     required IconData icon,
     required String label,
     required VoidCallback? onPressed,
@@ -1102,22 +1150,29 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
       icon: Icon(icon, size: 18),
       label: Text(
         label,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor: onPressed != null ? color : Colors.grey.shade300,
         foregroundColor:
             onPressed != null ? Colors.white : Colors.grey.shade600,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
+          side: BorderSide(
+            color: onPressed != null ? color : Colors.grey.shade300,
+            width: 1,
+          ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         elevation: onPressed != null ? 2 : 0,
       ),
     );
   }
 
-  Widget _buildFilterButton(String subject) {
+  Widget _buildPaperFilterButton(String subject) {
     final isSelected = _selectedSubject == subject;
     return Expanded(
       child: Container(
@@ -1127,11 +1182,15 @@ class _TestState extends State<Test> with TickerProviderStateMixin {
               ? null
               : () => _filterQuestions(subject),
           style: ElevatedButton.styleFrom(
-            backgroundColor:
-                isSelected ? Colors.blue.shade600 : Colors.grey.shade200,
-            foregroundColor: isSelected ? Colors.white : Colors.grey.shade700,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            backgroundColor: isSelected ? Colors.blueGrey : Colors.white,
+            foregroundColor: isSelected ? Colors.white : Colors.blueGrey,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+              side: BorderSide(
+                color: Colors.grey.shade300,
+                width: isSelected ? 2 : 1,
+              ),
+            ),
             padding: const EdgeInsets.symmetric(vertical: 8),
             elevation: isSelected ? 2 : 0,
           ),

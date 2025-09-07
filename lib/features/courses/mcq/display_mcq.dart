@@ -18,6 +18,14 @@ class DisplayMcq extends StatelessWidget {
 
   const DisplayMcq({super.key, required this.mcq});
 
+  // Paper theme colors
+  static const Color _paperBackground = Color(0xFFF8F5F0); // Creamy paper color
+  static const Color _cardColor = Color(0xFFFFFEFA); // Slightly off-white
+  static const Color _textColor = Color(0xFF3E2723); // Dark brown for text
+  static const Color _accentColor = Color(0xFF8D6E63); // Muted brown
+  static const Color _correctColor = Color(0xFF66BB6A); // Soft green
+  static const Color _dividerColor = Color(0xFFD7CCC8); // Light brown
+
   @override
   Widget build(BuildContext context) {
     // Extract MCQ data with null safety
@@ -51,7 +59,7 @@ class DisplayMcq extends StatelessWidget {
     final String explanationImage = explanationMap['image'] ?? '';
 
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBackground,
+      backgroundColor: _paperBackground,
       appBar: _buildAppBar(),
       body: _buildBody(
         context,
@@ -72,24 +80,24 @@ class DisplayMcq extends StatelessWidget {
     );
   }
 
-  /// Builds the AppBar with a consistent style.
+  /// Builds the AppBar with paper theme styling.
   AppBar _buildAppBar() {
     return AppBar(
       title: const Text(
         'MCQ Details',
         style: TextStyle(
-          color: Colors.black,
+          color: _textColor,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
       ),
-      backgroundColor: Colors.white,
-      elevation: 1,
-      iconTheme: const IconThemeData(color: Colors.black),
+      backgroundColor: _cardColor,
+      elevation: 0, // Removed shadow
+      iconTheme: const IconThemeData(color: _textColor),
     );
   }
 
-  /// Builds the main body of the page with a scrollable card layout.
+  /// Builds the main body with paper theme styling, utilizing maximum space.
   Widget _buildBody(
     BuildContext context, {
     required String questionText,
@@ -159,46 +167,64 @@ class DisplayMcq extends StatelessWidget {
     }
 
     return TeXViewQuizExample(
-        statement: finalQuestionText,
-        option1: finalAText,
-        option2: finalBText,
-        option3: finalCText,
-        option4: finalDText,
-        correctOptionId: correctOptionId,
-        explaination: finalExplaination);
+      statement: finalQuestionText,
+      option1: finalAText,
+      option2: finalBText,
+      option3: finalCText,
+      option4: finalDText,
+      correctOptionId: correctOptionId,
+      explaination: finalExplaination,
+      paperThemeColors: const PaperThemeColors(
+        backgroundColor: _cardColor,
+        textColor: _textColor,
+        accentColor: _accentColor,
+        correctColor: _correctColor,
+        dividerColor: _dividerColor,
+      ),
+    );
   }
 
   Widget _latexView(String val) {
     return TeXView(
-      loadingWidgetBuilder: (context) => const Center(
+      loadingWidgetBuilder: (context) => Center(
         child: SizedBox(
           height: 30,
           width: 30,
-          child: CircularProgressIndicator(strokeWidth: 2),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(_accentColor),
+          ),
         ),
       ),
       child: TeXViewDocument(
         val,
-        style: const TeXViewStyle(
-          padding: TeXViewPadding.all(2),
+        style: TeXViewStyle(
+          padding: TeXViewPadding.all(0), // Removed padding
           textAlign: TeXViewTextAlign.left,
+          backgroundColor: _cardColor,
+          fontStyle: TeXViewFontStyle(
+            fontSize: 16,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: AppTheme.subheadingStyle.copyWith(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.black87,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: _textColor,
+        ),
       ),
     );
   }
 
-  /// Builds an option row with LaTeX text and an optional image.
+  /// Builds an option row with paper theme styling, utilizing maximum space.
   Widget _buildOptionRow(
     String label,
     String text,
@@ -214,28 +240,62 @@ class DisplayMcq extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return ListTile(
-      leading: Text(
-        '$label:',
-        style: TextStyle(
-          color: isCorrect ? Colors.green : Colors.black87,
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
+    return Container(
+      margin: EdgeInsets.zero, // Removed margin
+      padding: EdgeInsets.zero, // Removed padding
+      decoration: BoxDecoration(
+        color: isCorrect ? _correctColor.withOpacity(0.1) : _cardColor,
+        border: Border.all(
+          color: isCorrect ? _correctColor : _dividerColor,
+          width: 1.0,
         ),
       ),
-      title: hasText ? TeXViewSimplified(text) : null,
-      subtitle: hasImage
-          ? Padding(
-              padding: const EdgeInsets.only(top: 4.0),
-              child: _buildImage(imageUrl),
-            )
-          : null,
-      contentPadding:
-          const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            margin: const EdgeInsets.all(8), // Small margin for the label
+            decoration: BoxDecoration(
+              color: isCorrect ? _correctColor : _accentColor,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasText)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        top: 8, right: 8, bottom: 4), // Minimal padding
+                    child: TeXViewSimplified(text),
+                  ),
+                if (hasImage)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        top: 4, right: 8, bottom: 8), // Minimal padding
+                    child: _buildImage(imageUrl),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  /// Builds an image widget with error handling and consistent styling.
+  /// Builds an image widget with paper theme styling, utilizing maximum space.
   Widget _buildImage(String url) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
@@ -243,15 +303,15 @@ class DisplayMcq extends StatelessWidget {
         url,
         height: 70,
         width: double.infinity,
-        fit: BoxFit.fitWidth,
+        fit: BoxFit.cover, // Changed to cover to utilize space
         errorBuilder: (context, error, stackTrace) => Container(
           height: 70,
           width: double.infinity,
-          color: Colors.grey[300],
-          child: const Center(
+          color: _dividerColor,
+          child: Center(
             child: Icon(
               Icons.error,
-              color: Colors.red,
+              color: _accentColor,
               size: 30,
             ),
           ),
@@ -259,4 +319,21 @@ class DisplayMcq extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Theme colors for the paper theme
+class PaperThemeColors {
+  final Color backgroundColor;
+  final Color textColor;
+  final Color accentColor;
+  final Color correctColor;
+  final Color dividerColor;
+
+  const PaperThemeColors({
+    required this.backgroundColor,
+    required this.textColor,
+    required this.accentColor,
+    required this.correctColor,
+    required this.dividerColor,
+  });
 }

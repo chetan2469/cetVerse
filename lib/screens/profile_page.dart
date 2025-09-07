@@ -1,4 +1,4 @@
-// lib/pages/profile_page.dart  (adjust path as needed)
+// lib/pages/profile_page.dart
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/core/auth/phone_auth_screen.dart';
 import 'package:cet_verse/core/models/user_model.dart';
@@ -6,10 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:cet_verse/ui/theme/constants.dart';
-
-// If you have a concrete PricingPage widget file, import it.
-// Otherwise this code navigates via route name '/pricing'.
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -18,20 +14,38 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage>
+    with TickerProviderStateMixin {
   bool _isEditing = false;
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   String _statusMessage = "";
   bool _saving = false;
-
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
   final _inrFmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+
+  // Blue Light Theme Colors
+  static const Color primaryBlue = Color(0xFF4A90E2);
+  static const Color lightBlue = Color(0xFF87CEEB);
+  static const Color paleBlue = Color(0xFFF0F8FF);
+  static const Color accentBlue = Color(0xFF5DADE2);
+  static const Color darkBlue = Color(0xFF2E86AB);
+  static const Color backgroundBlue = Color(0xFFF8FCFF);
 
   @override
   void initState() {
     super.initState();
     _populateFromProvider();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _animationController.forward();
   }
 
   void _populateFromProvider() {
@@ -47,12 +61,14 @@ class _ProfilePageState extends State<ProfilePage> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
   Future<void> _saveProfile() async {
     final auth = context.read<AuthProvider>();
     final phone = auth.userPhoneNumber;
+
     if (phone == null) {
       setState(() => _statusMessage = "Session expired. Please log in again.");
       return;
@@ -69,7 +85,6 @@ class _ProfilePageState extends State<ProfilePage> {
         'email': _emailController.text.trim(),
       });
 
-      // reflect locally in UserModel the minimal changes
       if (auth.currentUser != null) {
         auth.currentUser = UserModel(
           name: _nameController.text.trim(),
@@ -102,19 +117,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final auth = context.read<AuthProvider>();
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Log Out'),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Log Out')),
-        ],
-      ),
+      builder: (_) => _buildLogoutDialog(),
     );
+
     if (confirm != true) return;
 
     try {
@@ -133,522 +138,686 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = auth.currentUser;
 
     if (auth.isLoading) {
-      return Scaffold(
-        backgroundColor: AppTheme.scaffoldBackground,
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Colors.indigo, strokeWidth: 3),
-              SizedBox(height: 16),
-              Text('Loading profile...',
-                  style: TextStyle(fontSize: 16, color: Colors.grey)),
-            ],
-          ),
-        ),
-      );
+      return _buildLoadingScreen();
     }
 
     if (user == null) {
-      return Scaffold(
-        backgroundColor: AppTheme.scaffoldBackground,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
-              const SizedBox(height: 12),
-              Text(
-                auth.errorMessage ?? 'Please log in to view your profile',
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () {
-                  final p = auth.userPhoneNumber;
-                  if (p != null) {
-                    auth.fetchUserData(p);
-                  } else {
-                    Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const PhoneAuthScreen()));
-                  }
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildErrorScreen(auth);
     }
 
-    final plan = auth.getPlanType ?? 'Starter';
-    final status = auth.subscriptionStatus ?? 'inactive';
-    final isPro = auth.isPro;
-    final isPlus = auth.isPlus;
-
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBackground,
-      appBar: AppBar(
-        title: Text(_isEditing ? "Edit Profile" : "My Profile",
-            style: AppTheme.subheadingStyle.copyWith(fontSize: 20)),
-        backgroundColor: Colors.white,
-        elevation: 2,
-        iconTheme: const IconThemeData(color: Colors.black),
-        actions: [
-          if (!_isEditing)
-            IconButton(
-              tooltip: 'Refresh',
-              icon: const Icon(Icons.refresh, color: Colors.grey),
-              onPressed: () {
-                final p = auth.userPhoneNumber;
-                if (p != null) auth.fetchUserData(p);
-              },
-            ),
-          if (!_isEditing)
-            IconButton(
-              tooltip: 'Edit',
-              icon: const Icon(Icons.edit, color: Colors.indigo),
-              onPressed: () {
-                _populateFromProvider();
-                setState(() => _isEditing = true);
-              },
-            ),
-        ],
-      ),
+      backgroundColor: backgroundBlue,
       body: Stack(
         children: [
+          _buildBackground(),
           CustomScrollView(
             slivers: [
+              _buildAppBar(),
               SliverToBoxAdapter(
-                child: _HeaderCard(
-                  name: user.name,
-                  email: user.email,
-                  planType: plan,
-                  status: status,
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
-              SliverToBoxAdapter(
-                  child: _personalInfoCard(user, _phoneController.text)),
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
-              SliverToBoxAdapter(child: _subscriptionCard(auth)),
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
-              SliverToBoxAdapter(child: _featuresCard(auth)),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              SliverToBoxAdapter(child: _actionRow(onLogout: _logout)),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            // Use route if registered
-                            Navigator.pushNamed(context, '/pricing')
-                                .onError((_, __) {
-                              // Or show a snackbar if route missing
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Add route /pricing to navigate to PricingPage')),
-                              );
-                              return null;
-                            });
-                          },
-                          icon: Icon(isPro
-                              ? Icons.verified
-                              : (isPlus ? Icons.star_half : Icons.lock_open)),
-                          label: Text(isPro ? 'Manage Plan' : 'Upgrade Plan'),
-                        ),
-                      ),
+                      _buildProfileHeader(user, auth),
+                      const SizedBox(height: 20),
+                      _buildQuickStats(auth),
+                      const SizedBox(height: 20),
+                      _buildPersonalInfoCard(user, _phoneController.text),
+                      const SizedBox(height: 16),
+                      _buildSubscriptionCard(auth),
+                      const SizedBox(height: 16),
+                      _buildFeaturesCard(auth),
+                      const SizedBox(height: 20),
+                      _buildActionButtons(auth),
+                      const SizedBox(height: 32),
                     ],
                   ),
                 ),
               ),
-              if (_statusMessage.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
+            ],
+          ),
+          if (_isEditing) _buildEditOverlay(),
+          if (_saving) _buildLoadingOverlay(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackground() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFE3F2FD),
+            Color(0xFFF8FCFF),
+            Color(0xFFE1F5FE),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return SliverAppBar(
+      expandedHeight: 50,
+      floating: false,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      flexibleSpace: FlexibleSpaceBar(
+        centerTitle: true,
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                primaryBlue.withOpacity(0.1),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        if (!_isEditing) ...[
+          _buildActionButton(
+            icon: Icons.refresh_rounded,
+            onPressed: () {
+              final p = context.read<AuthProvider>().userPhoneNumber;
+              if (p != null) context.read<AuthProvider>().fetchUserData(p);
+            },
+          ),
+          _buildActionButton(
+            icon: Icons.edit_rounded,
+            onPressed: () {
+              _populateFromProvider();
+              setState(() => _isEditing = true);
+            },
+          ),
+        ],
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(
+      {required IconData icon, required VoidCallback onPressed}) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: primaryBlue.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, color: primaryBlue),
+        iconSize: 20,
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(UserModel user, AuthProvider auth) {
+    final plan = auth.getPlanType ?? 'Starter';
+    final status = auth.subscriptionStatus ?? 'inactive';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  paleBlue.withOpacity(0.3),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: primaryBlue.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Hero(
+                  tag: 'profile_avatar',
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [primaryBlue, lightBlue],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryBlue.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: Center(
                       child: Text(
-                        _statusMessage,
-                        style: TextStyle(
-                          color:
-                              _statusMessage.toLowerCase().contains('success')
-                                  ? Colors.green
-                                  : Colors.red,
+                        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
                   ),
                 ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            ],
-          ),
-          if (_isEditing) _editSheet(),
-          if (_saving)
-            Container(
-              color: Colors.black.withOpacity(0.35),
-              child: const Center(
-                  child: CircularProgressIndicator(color: Colors.indigo)),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.name.isEmpty ? 'Welcome User' : user.name,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: darkBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user.email?.isNotEmpty == true
+                            ? user.email!
+                            : 'No email provided',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _buildStatusChip(plan, _getPlanColor(plan)),
+                          const SizedBox(width: 8),
+                          _buildStatusChip(status, _getStatusColor(status)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
+          ),
+          Positioned(
+            top: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primaryBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _getPlanIcon(plan),
+                color: primaryBlue,
+                size: 20,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ---------- Cards ----------
+  Widget _buildQuickStats(AuthProvider auth) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatCard(
+              icon: Icons.quiz_rounded,
+              title: 'Mock Tests',
+              value: auth.mockTestsPerSubject >= 9999
+                  ? 'Unlimited'
+                  : '${auth.mockTestsPerSubject}/subject',
+              color: accentBlue,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              icon: Icons.star_rounded,
+              title: 'Features',
+              value: '${_getActiveFeatureCount(auth)}/9',
+              color: primaryBlue,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              icon: Icons.calendar_today_rounded,
+              title: 'Member Since',
+              value: auth.currentUser?.createdAt != null
+                  ? DateFormat('MMM yyyy').format(auth.currentUser!.createdAt!)
+                  : 'N/A',
+              color: lightBlue,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _personalInfoCard(UserModel user, String phone) {
-    return _CardWrap(
-      title: 'Personal Information',
+  Widget _buildStatCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          _infoRow('Phone', phone),
-          _infoRow('Date of Birth', user.dob),
-          _infoRow('City', user.city),
-          _infoRow('Education Level', user.educationLevel),
-          _infoRow('Board', user.board),
-          _infoRow('School', user.school),
-          _infoRow(
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonalInfoCard(UserModel user, String phone) {
+    return _buildModernCard(
+      title: '📋 Personal Information',
+      icon: Icons.person_rounded,
+      child: Column(
+        children: [
+          _buildInfoTile(Icons.phone_rounded, 'Phone', phone, primaryBlue),
+          _buildInfoTile(
+              Icons.cake_rounded, 'Date of Birth', user.dob, accentBlue),
+          _buildInfoTile(
+              Icons.location_city_rounded, 'City', user.city, lightBlue),
+          _buildInfoTile(Icons.school_rounded, 'Education Level',
+              user.educationLevel, primaryBlue),
+          _buildInfoTile(
+              Icons.account_balance_rounded, 'Board', user.board, accentBlue),
+          _buildInfoTile(
+              Icons.business_rounded, 'School', user.school, lightBlue),
+          _buildInfoTile(
+            Icons.schedule_rounded,
             'Joined',
             user.createdAt != null
                 ? DateFormat('MMM dd, yyyy').format(user.createdAt!)
                 : 'N/A',
+            primaryBlue,
           ),
         ],
       ),
     );
   }
 
-  Widget _subscriptionCard(AuthProvider auth) {
+  Widget _buildSubscriptionCard(AuthProvider auth) {
     final start = auth.startDate;
     final end = auth.endDate;
     final amt =
         (auth.amountPaid is num) ? (auth.amountPaid as num).toDouble() : 0.0;
 
-    return _CardWrap(
-      title: 'Subscription',
+    return _buildModernCard(
+      title: '💎 Subscription Details',
+      icon: Icons.card_membership_rounded,
       child: Column(
         children: [
-          _infoRow('Plan', auth.getPlanType ?? 'Starter'),
-          _infoRow('Status', auth.subscriptionStatus ?? 'Inactive'),
-          _infoRow('Start Date',
-              start != null ? DateFormat('MMM dd, yyyy').format(start) : 'N/A'),
-          _infoRow('End Date',
-              end != null ? DateFormat('MMM dd, yyyy').format(end) : 'N/A'),
-          _infoRow('Amount Paid', _inrFmt.format(amt)),
-          _infoRow('Payment Method', auth.paymentMethod ?? 'None'),
+          _buildInfoTile(
+              Icons.workspace_premium_rounded,
+              'Plan',
+              auth.getPlanType ?? 'Starter',
+              _getPlanColor(auth.getPlanType ?? 'Starter')),
+          _buildInfoTile(
+              Icons.toggle_on_rounded,
+              'Status',
+              auth.subscriptionStatus ?? 'Inactive',
+              _getStatusColor(auth.subscriptionStatus ?? 'inactive')),
+          _buildInfoTile(
+              Icons.play_arrow_rounded,
+              'Start Date',
+              start != null ? DateFormat('MMM dd, yyyy').format(start) : 'N/A',
+              primaryBlue),
+          _buildInfoTile(
+              Icons.stop_rounded,
+              'End Date',
+              end != null ? DateFormat('MMM dd, yyyy').format(end) : 'N/A',
+              accentBlue),
+          _buildInfoTile(Icons.currency_rupee_rounded, 'Amount Paid',
+              _inrFmt.format(amt), Colors.green),
+          _buildInfoTile(Icons.payment_rounded, 'Payment Method',
+              auth.paymentMethod ?? 'None', lightBlue),
         ],
       ),
     );
   }
 
-  Widget _featuresCard(AuthProvider auth) {
-    // Use provider getters so Pro/full show correctly
-    final mockTests = auth.mockTestsPerSubject >= 9999
-        ? 'Unlimited'
-        : auth.mockTestsPerSubject.toString();
-
-    return _CardWrap(
-      title: 'Feature Access',
+  Widget _buildFeaturesCard(AuthProvider auth) {
+    return _buildModernCard(
+      title: '🚀 Feature Access',
+      icon: Icons.featured_play_list_rounded,
       child: Column(
         children: [
-          _toggleRow('Board PYQs', auth.boardPyqsAccess),
-          _toggleRow('Chapter-wise Notes', auth.chapterWiseNotesAccess),
-          _toggleRow(
-              'Full Mock Test Series', auth.fullMockTestSeries || auth.isPro),
-          _infoRow('MHT CET PYQs Access', auth.mhtCetPyqsAccess),
-          _infoRow('Mock Tests / Subject', mockTests),
-          _toggleRow('Performance Tracking', auth.performanceTracking),
-          _toggleRow(
-              'Priority Features', auth.priorityFeatureAccess || auth.isPro),
-          _toggleRow(
-              'Topper Notes Download', auth.topperNotesDownload || auth.isPro),
-          _infoRow('Topper Profiles Access', auth.topperProfilesAccess),
+          _buildFeatureTile('Board PYQs', auth.boardPyqsAccess, Icons.quiz),
+          _buildFeatureTile(
+              'Chapter-wise Notes', auth.chapterWiseNotesAccess, Icons.note),
+          _buildFeatureTile('Full Mock Test Series',
+              auth.fullMockTestSeries || auth.isPro, Icons.assignment),
+          _buildFeatureTile('Performance Tracking', auth.performanceTracking,
+              Icons.analytics),
+          _buildFeatureTile('Priority Features',
+              auth.priorityFeatureAccess || auth.isPro, Icons.priority_high),
+          _buildFeatureTile('Topper Notes Download',
+              auth.topperNotesDownload || auth.isPro, Icons.download),
+          _buildInfoTile(Icons.people_rounded, 'MHT CET PYQs Access',
+              auth.mhtCetPyqsAccess, primaryBlue),
+          _buildInfoTile(Icons.groups_rounded, 'Topper Profiles Access',
+              auth.topperProfilesAccess, accentBlue),
         ],
       ),
     );
   }
 
-  Widget _actionRow({required VoidCallback onLogout}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => Navigator.pushNamed(context, '/settings'),
-              icon: const Icon(Icons.settings_outlined),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              label: const Text("Settings"),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: onLogout,
-              icon: const Icon(Icons.logout, color: Colors.red),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.red),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              label: const Text("Log Out", style: TextStyle(color: Colors.red)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------- Edit Sheet ----------
-
-  Widget _editSheet() {
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      top: 0,
-      child: Material(
-        color: Colors.black.withOpacity(0.3),
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            child: SafeArea(
-              top: false,
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text('Edit Profile',
-                        style: AppTheme.subheadingStyle.copyWith(fontSize: 18)),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    _textField('Name', _nameController),
-                    const SizedBox(height: 12),
-                    _textField('Email', _emailController,
-                        keyboardType: TextInputType.emailAddress),
-                    const SizedBox(height: 12),
-                    _textField('Phone', _phoneController, enabled: false),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _saving ? null : _saveProfile,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: const Text("Save"),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _saving
-                                ? null
-                                : () {
-                                    setState(() => _isEditing = false);
-                                    _populateFromProvider();
-                                  },
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.grey),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: const Text("Cancel"),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_statusMessage.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        _statusMessage,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color:
-                              _statusMessage.toLowerCase().contains('success')
-                                  ? Colors.green
-                                  : Colors.red,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ---------- Small helpers ----------
-
-  Widget _textField(String label, TextEditingController c,
-      {bool enabled = true, TextInputType? keyboardType}) {
-    return TextField(
-      controller: c,
-      enabled: enabled,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        filled: true,
-        fillColor: enabled ? Colors.white : Colors.grey[200],
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      ),
-    );
-  }
-
-  Widget _infoRow(String label, String value) {
-    final v = value.isEmpty ? 'N/A' : value;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-              child: Text(label,
-                  style: AppTheme.captionStyle
-                      .copyWith(fontWeight: FontWeight.w600))),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(v,
-                style: AppTheme.captionStyle,
-                textAlign: TextAlign.right,
-                overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _toggleRow(String label, bool enabled) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-              child: Text(label,
-                  style: AppTheme.captionStyle
-                      .copyWith(fontWeight: FontWeight.w600))),
-          Icon(enabled ? Icons.check_circle : Icons.cancel,
-              color: enabled ? Colors.green : Colors.red, size: 20),
-        ],
-      ),
-    );
-  }
-}
-
-// =================== Sub-widgets ===================
-
-class _HeaderCard extends StatelessWidget {
-  final String name;
-  final String? email;
-  final String planType;
-  final String status;
-
-  const _HeaderCard({
-    required this.name,
-    required this.email,
-    required this.planType,
-    required this.status,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final planLower = planType.toLowerCase();
-    final Color planColor = planLower == 'pro'
-        ? Colors.purple
-        : (planLower == 'plus' ? Colors.blue : Colors.grey);
-    final Color statusColor =
-        (status.toLowerCase() == 'active') ? Colors.green : Colors.red;
+  Widget _buildActionButtons(AuthProvider auth) {
+    final isPro = auth.isPro;
+    final isPlus = auth.isPlus;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildGradientButton(
+                  onPressed: () => Navigator.pushNamed(context, '/settings'),
+                  icon: Icons.settings_rounded,
+                  label: 'Settings',
+                  gradient: LinearGradient(
+                    colors: [primaryBlue, accentBlue],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildGradientButton(
+                  onPressed: _logout,
+                  icon: Icons.logout_rounded,
+                  label: 'Logout',
+                  gradient: LinearGradient(
+                    colors: [Colors.red.shade400, Colors.red.shade600],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGradientButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String label,
+    required Gradient gradient,
+  }) {
+    return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [planColor.withOpacity(0.15), Colors.white],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: gradient,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 4))
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 36,
-            backgroundColor: planColor.withOpacity(0.8),
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : 'U',
-              style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: primaryBlue.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  primaryBlue.withOpacity(0.05),
+                  paleBlue.withOpacity(0.1),
+                ],
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
               children: [
-                Text(name,
-                    style: AppTheme.subheadingStyle
-                        .copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(email?.isNotEmpty == true ? email! : 'No email provided',
-                    style: AppTheme.captionStyle
-                        .copyWith(color: Colors.grey[700])),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _pill(planType, planColor),
-                    _pill(status, statusColor),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: primaryBlue, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: darkBlue,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoTile(
+      IconData icon, String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: darkBlue,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value.isEmpty ? 'N/A' : value,
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureTile(String label, bool enabled, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: enabled
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon,
+                color: enabled ? Colors.green : Colors.red, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: darkBlue,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: enabled
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  enabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                  color: enabled ? Colors.green : Colors.red,
+                  size: 14,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  enabled ? 'Active' : 'Locked',
+                  style: TextStyle(
+                    color: enabled ? Colors.green : Colors.red,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -658,58 +827,445 @@ class _HeaderCard extends StatelessWidget {
     );
   }
 
-  Widget _pill(String text, Color color) {
+  Widget _buildStatusChip(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(999)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
           const SizedBox(width: 6),
-          Text(text,
-              style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );
   }
-}
 
-class _CardWrap extends StatelessWidget {
-  final String title;
-  final Widget child;
+  Widget _buildEditOverlay() {
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      top: 0,
+      child: Material(
+        color: Colors.black.withOpacity(0.5),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child:
+                            const Icon(Icons.edit_rounded, color: primaryBlue),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Edit Profile',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: darkBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildModernTextField(
+                      'Name', _nameController, Icons.person_rounded),
+                  const SizedBox(height: 16),
+                  _buildModernTextField(
+                      'Email', _emailController, Icons.email_rounded,
+                      keyboardType: TextInputType.emailAddress),
+                  const SizedBox(height: 16),
+                  _buildModernTextField(
+                      'Phone', _phoneController, Icons.phone_rounded,
+                      enabled: false),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildGradientButton(
+                          onPressed: _saving ? () {} : _saveProfile,
+                          icon: Icons.save_rounded,
+                          label: 'Save',
+                          gradient: LinearGradient(colors: [
+                            Colors.green.shade400,
+                            Colors.green.shade600
+                          ]),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _saving
+                                  ? null
+                                  : () {
+                                      setState(() => _isEditing = false);
+                                      _populateFromProvider();
+                                    },
+                              borderRadius: BorderRadius.circular(16),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.close_rounded,
+                                        color: Colors.grey),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Cancel',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_statusMessage.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _statusMessage.toLowerCase().contains('success')
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _statusMessage,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color:
+                              _statusMessage.toLowerCase().contains('success')
+                                  ? Colors.green
+                                  : Colors.red,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-  const _CardWrap({required this.title, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildModernTextField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
+    bool enabled = true,
+    TextInputType? keyboardType,
+  }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 4)),
-          ]),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        color: enabled ? Colors.white : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: enabled ? primaryBlue.withOpacity(0.2) : Colors.grey.shade300,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: primaryBlue.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        enabled: enabled,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: primaryBlue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: primaryBlue, size: 20),
+          ),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          labelStyle: TextStyle(color: Colors.grey.shade600),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingScreen() {
+    return Scaffold(
+      backgroundColor: backgroundBlue,
+      body: Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(title, style: AppTheme.subheadingStyle.copyWith(fontSize: 18)),
-            const Divider(),
-            child,
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: primaryBlue.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: CircularProgressIndicator(
+                color: primaryBlue,
+                strokeWidth: 3,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Loading your profile...',
+              style: TextStyle(
+                fontSize: 16,
+                color: darkBlue,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildErrorScreen(AuthProvider auth) {
+    return Scaffold(
+      backgroundColor: backgroundBlue,
+      body: Center(
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.error_outline_rounded,
+                    color: Colors.red, size: 48),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                auth.errorMessage ?? 'Please log in to view your profile',
+                style: const TextStyle(color: Colors.red, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              _buildGradientButton(
+                onPressed: () {
+                  final p = auth.userPhoneNumber;
+                  if (p != null) {
+                    auth.fetchUserData(p);
+                  } else {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const PhoneAuthScreen()),
+                    );
+                  }
+                },
+                icon: Icons.refresh_rounded,
+                label: 'Retry',
+                gradient: LinearGradient(colors: [primaryBlue, accentBlue]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingOverlay() {
+    return Container(
+      color: Colors.black.withOpacity(0.5),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: primaryBlue, strokeWidth: 3),
+              const SizedBox(height: 16),
+              const Text(
+                'Saving changes...',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutDialog() {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.logout_rounded, color: Colors.red),
+          ),
+          const SizedBox(width: 12),
+          const Text('Confirm Logout'),
+        ],
+      ),
+      content: const Text('Are you sure you want to log out of your account?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.red.shade400, Colors.red.shade600]),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper methods
+  Color _getPlanColor(String plan) {
+    switch (plan.toLowerCase()) {
+      case 'pro':
+        return Colors.purple;
+      case 'plus':
+        return primaryBlue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    return status.toLowerCase() == 'active' ? Colors.green : Colors.red;
+  }
+
+  IconData _getPlanIcon(String plan) {
+    switch (plan.toLowerCase()) {
+      case 'pro':
+        return Icons.diamond_rounded;
+      case 'plus':
+        return Icons.star_rounded;
+      default:
+        return Icons.account_circle_rounded;
+    }
+  }
+
+  int _getActiveFeatureCount(AuthProvider auth) {
+    int count = 0;
+    if (auth.boardPyqsAccess) count++;
+    if (auth.chapterWiseNotesAccess) count++;
+    if (auth.fullMockTestSeries || auth.isPro) count++;
+    if (auth.performanceTracking) count++;
+    if (auth.priorityFeatureAccess || auth.isPro) count++;
+    if (auth.topperNotesDownload || auth.isPro) count++;
+    if (auth.mhtCetPyqsAccess.isNotEmpty) count++;
+    if (auth.topperProfilesAccess.isNotEmpty) count++;
+    return count;
   }
 }

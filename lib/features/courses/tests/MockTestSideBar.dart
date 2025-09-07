@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cet_verse/ui/theme/constants.dart';
 
 class MockTestSideBar extends StatelessWidget {
   final List<int> userAnswers;
@@ -24,7 +25,7 @@ class MockTestSideBar extends StatelessWidget {
     } else if (userAnswers[questionIndex] != -1) {
       return Colors.green;
     } else {
-      return Color.fromARGB(255, 145, 186, 218);
+      return Colors.grey.shade400;
     }
   }
 
@@ -57,94 +58,294 @@ class MockTestSideBar extends StatelessWidget {
           color: Colors.white,
           child: Column(
             children: [
+              // Header Card
               Container(
-                color: Colors.blue[700],
-                padding: const EdgeInsets.all(16.0),
-                child: const Center(
-                  child: Text(
-                    'Question Status',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                margin: const EdgeInsets.all(16),
+                child: Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatusRow(Icons.square, Colors.green, 'Attempted',
-                        attemptedCount),
-                    const SizedBox(height: 8),
-                    _buildStatusRow(Icons.square, Colors.orange,
-                        'Marked for Review', reviewCount),
-                    const SizedBox(height: 8),
-                    _buildStatusRow(
-                        Icons.square,
-                        Color.fromARGB(255, 145, 186, 218),
-                        'Unattempted',
-                        unattemptedCount),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Subject Breakdown:',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
-                      child: Text(
-                        '$subject: ${subjectAttempted[subject] ?? 0}/${subjectTotal[subject] ?? 0}',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 6,
-                    childAspectRatio: 1.0,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  itemCount: mcqs.length,
-                  itemBuilder: (context, index) {
-                    final color = _getStatusColor(index);
-                    return InkWell(
-                      onTap: () {
-                        if (!hasSubmitted) {
-                          Navigator.pop(context); // Close drawer
-                          onJumpToQuestion(index);
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: color, width: 2),
+                  color: Colors.indigoAccent,
+                  shadowColor: Colors.grey.withOpacity(0.3),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.quiz,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
-                        child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: color,
+                        const SizedBox(width: 12),
+                        Text(
+                          'Question Status',
+                          style: AppTheme.subheadingStyle.copyWith(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Status Overview Card
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  color: Colors.white,
+                  shadowColor: Colors.grey.withOpacity(0.3),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Overview',
+                          style: AppTheme.subheadingStyle.copyWith(
+                            fontSize: 16,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildStatusRow(
+                          icon: Icons.check_circle_outline,
+                          color: Colors.green,
+                          label: 'Attempted',
+                          count: attemptedCount,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildStatusRow(
+                          icon: Icons.bookmark_border,
+                          color: Colors.orange,
+                          label: 'For Review',
+                          count: reviewCount,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildStatusRow(
+                          icon: Icons.radio_button_unchecked,
+                          color: Colors.grey.shade400,
+                          label: 'Unattempted',
+                          count: unattemptedCount,
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.indigoAccent.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                Icons.subject,
+                                color: Colors.indigoAccent,
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Subject Progress',
+                              style: AppTheme.subheadingStyle.copyWith(
+                                fontSize: 14,
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                subject,
+                                style: AppTheme.captionStyle.copyWith(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.indigoAccent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${subjectAttempted[subject] ?? 0}/${subjectTotal[subject] ?? 0}',
+                                  style: AppTheme.subheadingStyle.copyWith(
+                                    fontSize: 12,
+                                    color: Colors.indigoAccent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Questions Grid
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    color: Colors.white,
+                    shadowColor: Colors.grey.withOpacity(0.3),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.indigoAccent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Icon(
+                                  Icons.grid_view,
+                                  color: Colors.indigoAccent,
+                                  size: 16,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Question Navigator',
+                                style: AppTheme.subheadingStyle.copyWith(
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                            child: GridView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 6,
+                                childAspectRatio: 1.0,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                              ),
+                              itemCount: mcqs.length,
+                              itemBuilder: (context, index) {
+                                final color = _getStatusColor(index);
+                                final isSelected = userAnswers[index] != -1;
+                                final isReviewed =
+                                    reviewedQuestions.contains(index);
+
+                                return Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: hasSubmitted
+                                        ? null
+                                        : () {
+                                            Navigator.pop(context);
+                                            onJumpToQuestion(index);
+                                          },
+                                    borderRadius: BorderRadius.circular(8),
+                                    splashColor:
+                                        Colors.indigoAccent.withOpacity(0.2),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: color.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: color,
+                                          width:
+                                              isSelected || isReviewed ? 2 : 1,
+                                        ),
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          Center(
+                                            child: Text(
+                                              '${index + 1}',
+                                              style: AppTheme.subheadingStyle
+                                                  .copyWith(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: color,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isReviewed)
+                                            Positioned(
+                                              top: 2,
+                                              right: 2,
+                                              child: Container(
+                                                width: 8,
+                                                height: 8,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.orange,
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      ],
+                    ),
+                  ),
                 ),
               ),
+
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -152,12 +353,46 @@ class MockTestSideBar extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusRow(IconData icon, Color color, String label, int count) {
+  Widget _buildStatusRow({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required int count,
+  }) {
     return Row(
       children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 8),
-        Text('$label: $count', style: TextStyle(fontSize: 14, color: color)),
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(icon, color: color, size: 16),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: AppTheme.captionStyle.copyWith(
+            fontSize: 14,
+            color: Colors.black87,
+          ),
+        ),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            '$count',
+            style: AppTheme.subheadingStyle.copyWith(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ],
     );
   }

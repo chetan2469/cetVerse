@@ -99,7 +99,6 @@ class PyqQuestionCard extends StatelessWidget {
             children: [
               Container(
                 alignment: Alignment.topLeft,
-                padding: const EdgeInsets.all(16.0),
                 child: Text(
                   originText,
                   style: const TextStyle(
@@ -136,14 +135,6 @@ class PyqQuestionCard extends StatelessWidget {
                 style: const TeXViewStyle(
                   margin: TeXViewMargin.all(10),
                   padding: TeXViewPadding.all(10),
-                  borderRadius: TeXViewBorderRadius.all(10),
-                  border: TeXViewBorder.all(
-                    TeXViewBorderDecoration(
-                      borderColor: Colors.grey,
-                      borderStyle: TeXViewBorderStyle.solid,
-                      borderWidth: 1,
-                    ),
-                  ),
                   backgroundColor: Colors.white,
                 ),
                 loadingWidgetBuilder: (context) => const SizedBox.shrink(),
@@ -165,32 +156,6 @@ class PyqQuestionCard extends StatelessWidget {
             ),
           ),
           // Swipe indicators
-          if (index > 0)
-            Positioned(
-              left: 8,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: Icon(
-                  Icons.chevron_left,
-                  size: 36,
-                  color: Colors.grey.withOpacity(0.5),
-                ),
-              ),
-            ),
-          if (index < originalMcqs.length - 1)
-            Positioned(
-              right: 8,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: Icon(
-                  Icons.chevron_right,
-                  size: 36,
-                  color: Colors.grey.withOpacity(0.5),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -214,9 +179,9 @@ class PyqQuestionCard extends StatelessWidget {
                     borderColor: Colors.blue,
                   ),
                 ),
-                margin: TeXViewMargin.all(8),
+                margin: TeXViewMargin.all(4),
                 backgroundColor: Colors.transparent,
-                padding: TeXViewPadding.all(10),
+                padding: TeXViewPadding.all(12),
                 fontStyle: TeXViewFontStyle(fontSize: 14),
               )
             : TeXViewStyle(
@@ -229,7 +194,7 @@ class PyqQuestionCard extends StatelessWidget {
                   ),
                 ),
                 backgroundColor: Colors.white,
-                padding: const TeXViewPadding.all(10),
+                padding: const TeXViewPadding.all(12),
                 fontStyle: TeXViewFontStyle(fontSize: 14),
               ),
       ),

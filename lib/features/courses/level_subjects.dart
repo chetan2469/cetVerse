@@ -1,5 +1,6 @@
 import 'package:cet_verse/features/courses/study_type.dart';
 import 'package:cet_verse/ui/components/my_drawer.dart';
+import 'package:cet_verse/ui/theme/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shimmer/shimmer.dart';
@@ -22,75 +23,28 @@ class LevelSubjects extends StatefulWidget {
   _LevelSubjectsState createState() => _LevelSubjectsState();
 }
 
-class _LevelSubjectsState extends State<LevelSubjects>
-    with TickerProviderStateMixin {
+class _LevelSubjectsState extends State<LevelSubjects> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
-  bool _isLoading = true;
-  bool _hasError = false;
-  String? _errorMessage;
-
-  // Animation controllers
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  late Future<QuerySnapshot> _subjectsFuture;
 
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
-    _simulateInitialLoad();
-  }
-
-  void _initializeAnimations() {
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0.0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
-    );
-  }
-
-  void _simulateInitialLoad() async {
-    // Add a brief delay to show shimmer effect
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) {
-      setState(() => _isLoading = false);
-      _fadeController.forward();
-      _slideController.forward();
-    }
+    _subjectsFuture = FirebaseFirestore.instance
+        .collection('levels')
+        .doc(widget.title)
+        .collection('subjects')
+        .get();
   }
 
   Future<void> _refreshSubjects() async {
     setState(() {
-      _isLoading = true;
-      _hasError = false;
+      _subjectsFuture = FirebaseFirestore.instance
+          .collection('levels')
+          .doc(widget.title)
+          .collection('subjects')
+          .get();
     });
-
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _slideController.dispose();
-    super.dispose();
   }
 
   @override
@@ -103,169 +57,128 @@ class _LevelSubjectsState extends State<LevelSubjects>
 
     return Scaffold(
       key: scaffoldKey,
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.white,
       drawer: const MyDrawer(),
       appBar: AppBar(
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        toolbarHeight: 48, // Reduced height
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           displayTitle,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+          style: AppTheme.subheadingStyle.copyWith(
+            fontSize: 18, // Updated to 18
+            color: Colors.black,
           ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 1,
-            color: Colors.grey.shade300,
-          ),
-        ),
+        centerTitle: true,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade50, Colors.white],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: RefreshIndicator(
-          onRefresh: _refreshSubjects,
-          color: Colors.blue.shade600,
-          backgroundColor: Colors.white,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(16), // Reduced padding
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(displayTitle),
+                  const SizedBox(height: 16), // Reduced spacing
+                  Text(
+                    "Choose Subject",
+                    style: AppTheme.subheadingStyle.copyWith(
+                      fontSize: 16, // Updated to 16
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16), // Reduced spacing
+                  _buildSubjectsSection(),
+                ],
+              ),
             ),
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(displayTitle),
-                const SizedBox(height: 24),
-                _buildSubjectsSection(),
-              ],
-            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildHeader(String displayTitle) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade100, Colors.purple.shade50],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return Card(
+      elevation: 2, // Reduced elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue.shade400, Colors.purple.shade400],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      color: Colors.white,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      child: Padding(
+        padding: const EdgeInsets.all(16), // Reduced padding
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8), // Reduced padding
+              decoration: BoxDecoration(
+                color: Colors.indigoAccent,
+                borderRadius: BorderRadius.circular(8),
               ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              child: const Icon(
+                Icons.school,
+                color: Colors.white,
+                size: 24, // Reduced size
+              ),
             ),
-            child: const Icon(
-              Icons.school,
-              color: Colors.white,
-              size: 36,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayTitle,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+            const SizedBox(width: 16), // Reduced spacing
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayTitle,
+                    style: AppTheme.subheadingStyle.copyWith(
+                      fontSize: 16, // Updated to 16
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _buildInfoChip(
-                        Icons.book_outlined, widget.lessons, Colors.blue),
-                    const SizedBox(width: 12),
-                    _buildInfoChip(Icons.star, widget.rating, Colors.orange),
-                  ],
-                ),
-              ],
+                  const SizedBox(height: 6), // Reduced spacing
+                  Row(
+                    children: [
+                      _buildInfoChip(Icons.book_outlined, widget.lessons),
+                      const SizedBox(width: 8), // Reduced spacing
+                      _buildInfoChip(Icons.star, widget.rating),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInfoChip(IconData icon, String text, Color color) {
+  Widget _buildInfoChip(IconData icon, String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+          horizontal: 6, vertical: 2), // Reduced padding
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: Colors.indigoAccent.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 12, color: Colors.indigoAccent), // Reduced size
+          const SizedBox(width: 3), // Reduced spacing
           Text(
             text,
-            style: TextStyle(
-              fontSize: 12,
+            style: const TextStyle(
+              fontSize: 12, // Updated to 12
               fontWeight: FontWeight.w500,
-              color: Colors.grey,
+              color: Colors.black87,
             ),
           ),
         ],
@@ -274,114 +187,6 @@ class _LevelSubjectsState extends State<LevelSubjects>
   }
 
   Widget _buildSubjectsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.subject,
-              color: Colors.blue.shade600,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Choose Subject',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _isLoading ? _buildSubjectsShimmer() : _buildSubjectsContent(),
-      ],
-    );
-  }
-
-  Widget _buildSubjectsShimmer() {
-    return Column(
-      children: List.generate(
-          6,
-          (index) => Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Shimmer.fromColors(
-                  baseColor: Colors.grey.shade300,
-                  highlightColor: Colors.grey.shade100,
-                  period: Duration(milliseconds: 1200 + (index * 100)),
-                  child: Container(
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 150,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                width: 100,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 16.0),
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )),
-    );
-  }
-
-  Widget _buildSubjectsContent() {
     const List<String> desiredOrder = [
       "Physics",
       "Chemistry",
@@ -391,46 +196,124 @@ class _LevelSubjectsState extends State<LevelSubjects>
       "Biology"
     ];
 
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: FutureBuilder<QuerySnapshot>(
-          future: FirebaseFirestore.instance
-              .collection('levels')
-              .doc(widget.title)
-              .collection('subjects')
-              .get(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return _buildSubjectsShimmer();
-            }
+    return FutureBuilder<QuerySnapshot>(
+      future: _subjectsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildShimmerLoading();
+        }
 
-            if (snapshot.hasError) {
-              return _buildErrorState(snapshot.error.toString());
-            }
+        if (snapshot.hasError) {
+          return _buildErrorCard(snapshot.error.toString());
+        }
 
-            List<String> availableSubjects =
-                snapshot.data!.docs.map((doc) => doc.id).toList();
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return _buildEmptyCard();
+        }
 
-            List<String> subjects = desiredOrder
-                .where((subject) => availableSubjects.contains(subject))
-                .toList();
+        List<String> availableSubjects =
+            snapshot.data!.docs.map((doc) => doc.id).toList();
 
-            if (subjects.isEmpty) {
-              return _buildEmptyState();
-            }
+        List<String> subjects = desiredOrder
+            .where((subject) => availableSubjects.contains(subject))
+            .toList();
 
-            return Column(
-              children: subjects.map((subject) {
-                final index = subjects.indexOf(subject);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _buildSubjectCard(subject, index),
-                );
-              }).toList(),
+        if (subjects.isEmpty) {
+          return _buildEmptyCard();
+        }
+
+        return Column(
+          children: subjects.map((subject) {
+            final index = subjects.indexOf(subject);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12), // Reduced spacing
+              child: _buildSubjectCard(subject, index),
             );
-          },
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return Column(
+      children: List.generate(6, (index) => _buildShimmerSubjectCard()),
+    );
+  }
+
+  Widget _buildShimmerSubjectCard() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12), // Reduced spacing
+      child: Card(
+        elevation: 2, // Reduced elevation
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        color: Colors.white,
+        shadowColor: Colors.grey.withOpacity(0.2),
+        child: Padding(
+          padding: const EdgeInsets.all(16), // Reduced padding
+          child: Row(
+            children: [
+              Shimmer.fromColors(
+                baseColor: Colors.grey.shade300,
+                highlightColor: Colors.grey.shade100,
+                child: Container(
+                  width: 40, // Reduced size
+                  height: 40, // Reduced size
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16), // Reduced spacing
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Shimmer.fromColors(
+                      baseColor: Colors.grey.shade300,
+                      highlightColor: Colors.grey.shade100,
+                      child: Container(
+                        width: 120, // Reduced width
+                        height: 16, // Reduced height
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6), // Reduced spacing
+                    Shimmer.fromColors(
+                      baseColor: Colors.grey.shade300,
+                      highlightColor: Colors.grey.shade100,
+                      child: Container(
+                        width: 160, // Reduced width
+                        height: 12, // Reduced height
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Shimmer.fromColors(
+                baseColor: Colors.grey.shade300,
+                highlightColor: Colors.grey.shade100,
+                child: Container(
+                  width: 20, // Reduced size
+                  height: 20, // Reduced size
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -440,287 +323,238 @@ class _LevelSubjectsState extends State<LevelSubjects>
     final Map<String, Map<String, dynamic>> subjectInfo = {
       "Physics": {
         'icon': Icons.science_outlined,
-        'color': Colors.blue,
         'description': 'Mechanics, Thermodynamics & more'
       },
       "Chemistry": {
         'icon': Icons.biotech_outlined,
-        'color': Colors.green,
         'description': 'Organic, Inorganic & Physical'
       },
       "Mathematics": {
         'icon': Icons.calculate_outlined,
-        'color': Colors.purple,
         'description': 'Algebra, Calculus & Geometry'
       },
       "Mathematics Part I": {
         'icon': Icons.calculate_outlined,
-        'color': Colors.purple,
         'description': 'Part I - Core Mathematics'
       },
       "Mathematics Part II": {
         'icon': Icons.poll_rounded,
-        'color': Colors.indigo,
         'description': 'Part II - Advanced Topics'
       },
       "Biology": {
         'icon': Icons.local_florist_outlined,
-        'color': Colors.teal,
         'description': 'Botany & Zoology concepts'
       },
     };
 
     final info = subjectInfo[subject] ??
-        {
-          'icon': Icons.subject_outlined,
-          'color': Colors.grey,
-          'description': 'Subject content'
-        };
+        {'icon': Icons.subject_outlined, 'description': 'Subject content'};
 
-    return TweenAnimationBuilder<double>(
-      duration: Duration(milliseconds: 600 + (index * 100)),
-      tween: Tween<double>(begin: 0.0, end: 1.0), // Ensure double values
-      curve: Curves.easeOut, // Changed from easeOutBack to avoid overshoot
-      builder: (context, value, child) {
-        // Clamp the value to ensure it stays within valid ranges
-        final double clampedValue = value.clamp(0.0, 1.0);
+    final isFirstItem = index == 0;
 
-        return Transform.scale(
-          scale: value, // Scale can use the original value
-          child: Opacity(
-            opacity: clampedValue, // Opacity uses clamped value
-            child: child,
-          ),
-        );
-      },
-      child: GestureDetector(
+    return Card(
+      elevation: 2, // Reduced elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      color: Colors.white,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () {
           Navigator.push(
             context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  StudyType(
+            MaterialPageRoute(
+              builder: (_) => StudyType(
                 level: widget.title,
                 subject: subject,
               ),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(1.0, 0.0),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                );
-              },
-              transitionDuration: const Duration(milliseconds: 300),
             ),
           );
         },
-        child: Container(
-          height: 80,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+        splashColor: Colors.indigoAccent.withOpacity(0.2),
+        child: Padding(
+          padding: const EdgeInsets.all(16), // Reduced padding
+          child: Row(
+            children: [
+              Container(
+                width: 40, // Reduced size
+                height: 40, // Reduced size
+                decoration: BoxDecoration(
+                  color:
+                      isFirstItem ? Colors.indigoAccent : Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  info['icon'] as IconData,
+                  size: 20, // Reduced size
+                  color: Colors.white,
+                ),
               ),
-            ],
-            border: Border.all(
-              color: (info['color'] as Color).withOpacity(0.1),
-              width: 1,
-            ),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        StudyType(
-                      level: widget.title,
-                      subject: subject,
-                    ),
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
-                      return SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(1.0, 0.0),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      );
-                    },
-                    transitionDuration: const Duration(milliseconds: 300),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
+              const SizedBox(width: 16), // Reduced spacing
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: (info['color'] as Color).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        info['icon'] as IconData,
-                        size: 24,
-                        color: info['color'] as Color,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
                             subject,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
+                            style: AppTheme.subheadingStyle.copyWith(
+                              fontSize: 14, // Updated to 14
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            info['description'] as String,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
+                        ),
+                        if (isFirstItem) ...[
+                          const SizedBox(width: 6), // Reduced spacing
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2, // Reduced padding
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'POPULAR',
+                              style: TextStyle(
+                                fontSize: 10, // Updated to 10
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ],
-                      ),
+                      ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: (info['color'] as Color).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward_ios,
-                        size: 14,
-                        color: info['color'] as Color,
+                    const SizedBox(height: 4), // Reduced spacing
+                    Text(
+                      info['description'] as String,
+                      style: AppTheme.captionStyle.copyWith(
+                        fontSize: 12, // Updated to 12
+                        color: Colors.black87,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+              const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.indigoAccent,
+                size: 16, // Reduced size
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildErrorState(String error) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+  Widget _buildErrorCard(String error) {
+    return Card(
+      elevation: 2, // Reduced elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 48,
-            color: Colors.red.shade400,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Unable to Load Subjects',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+      color: Colors.white,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      child: Padding(
+        padding: const EdgeInsets.all(20), // Reduced padding
+        child: Column(
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 40, // Reduced size
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Please check your connection and try again',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _refreshSubjects,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Try Again'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade600,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+            const SizedBox(height: 12), // Reduced spacing
+            Text(
+              'Error loading subjects',
+              style: AppTheme.subheadingStyle.copyWith(
+                fontSize: 16, // Updated to 16
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6), // Reduced spacing
+            Text(
+              'Please check your connection and try again',
+              style: AppTheme.captionStyle.copyWith(
+                fontSize: 14, // Updated to 14
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12), // Reduced spacing
+            ElevatedButton(
+              onPressed: _refreshSubjects,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigoAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 8), // Reduced padding
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 2, // Reduced elevation
+              ),
+              child: const Text(
+                'Try Again',
+                style: TextStyle(
+                  fontSize: 14, // Updated to 14
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+  Widget _buildEmptyCard() {
+    return Card(
+      elevation: 2, // Reduced elevation
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.school_outlined,
-            size: 48,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No Subjects Available',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+      color: Colors.white,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      child: Padding(
+        padding: const EdgeInsets.all(20), // Reduced padding
+        child: Column(
+          children: [
+            const Icon(
+              Icons.info_outline,
+              color: Colors.grey,
+              size: 40, // Reduced size
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Subjects will be available soon for this level',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 14,
+            const SizedBox(height: 12), // Reduced spacing
+            Text(
+              'No subjects available',
+              style: AppTheme.subheadingStyle.copyWith(
+                fontSize: 16, // Updated to 16
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 6), // Reduced spacing
+            Text(
+              'Subjects will be available soon for this level',
+              style: AppTheme.captionStyle.copyWith(
+                fontSize: 14, // Updated to 14
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
