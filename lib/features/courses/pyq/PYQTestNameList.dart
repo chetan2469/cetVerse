@@ -1,5 +1,5 @@
 import 'package:cet_verse/features/courses/pyq/PYQTestQuestionList.dart';
-import 'package:cet_verse/features/courses/pyq/Test.dart';
+import 'package:cet_verse/features/courses/pyq/tests/test_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
@@ -566,6 +566,7 @@ class _PYQTestNameListState extends State<PYQTestNameList> {
         children: [
           IconButton(
             onPressed: () {
+              if (isDisabled) return;
               Navigator.push(
                 context,
                 MaterialPageRoute(

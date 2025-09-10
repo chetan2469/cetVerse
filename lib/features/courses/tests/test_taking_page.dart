@@ -115,6 +115,65 @@ class _TestTakingPageState extends State<TestTakingPage> {
     });
   }
 
+  Future<void> _showBackConfirmation(BuildContext context) async {
+    final bool? shouldPop = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // User must tap a button
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.help_outline, color: Colors.blue, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Go Back?',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Are you sure you want to go back? Your progress will be lost.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.blue, fontSize: 14),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: const Text(
+                'Go Back',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Only pop if user confirmed
+    if (shouldPop == true && context.mounted) {
+      Navigator.pop(context);
+    }
+  }
+
   void _selectAnswer(String id) {
     if (_hasSubmitted) return;
     final optionIndex = int.parse(id.split('_')[1]) - 1;
@@ -368,8 +427,8 @@ class _TestTakingPageState extends State<TestTakingPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back, color: Colors.blueGrey),
+          onPressed: () => _showBackConfirmation(context),
         ),
         title: Text(
           "Test ${widget.testNumber} - ${widget.subject}",
@@ -704,6 +763,11 @@ class _TestTakingPageState extends State<TestTakingPage> {
               ),
               // Question Content
               Expanded(
+                  child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  scrollbars: false, // Hide the scrollbar
+                  overscroll: false, // Optional: disable overscroll effect
+                ),
                 child: SingleChildScrollView(
                   child: TeXView(
                     key: ValueKey("quiz_$index"),
@@ -724,18 +788,19 @@ class _TestTakingPageState extends State<TestTakingPage> {
                             _buildOption(index, "id_3", "C", finalCText),
                             _buildOption(index, "id_4", "D", finalDText),
                           ],
-                          selectedItemStyle: TeXViewStyle(
-                            borderRadius: const TeXViewBorderRadius.all(12),
+                          selectedItemStyle: const TeXViewStyle(
+                            borderRadius: TeXViewBorderRadius.all(12),
                             border: TeXViewBorder.all(
                               TeXViewBorderDecoration(
                                 borderWidth: 2,
-                                borderColor: Colors.indigoAccent,
+                                borderColor:
+                                    Colors.blue, // Changed to blue as requested
                               ),
                             ),
-                            margin: const TeXViewMargin.all(8),
+                            margin: TeXViewMargin.all(8),
                             backgroundColor:
-                                Colors.indigoAccent.withOpacity(0.1),
-                            padding: const TeXViewPadding.all(16),
+                                Color(0xFFE3F2FD), // Light blue background
+                            padding: TeXViewPadding.all(16),
                           ),
                           normalItemStyle: const TeXViewStyle(
                             margin: TeXViewMargin.all(8),
@@ -763,13 +828,13 @@ class _TestTakingPageState extends State<TestTakingPage> {
                       child: Padding(
                         padding: EdgeInsets.all(16.0),
                         child: CircularProgressIndicator(
-                          color: Colors.indigoAccent,
+                          color: Colors.blue, // Changed to blue for consistency
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              )),
             ],
           ),
           // Review Bookmark

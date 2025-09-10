@@ -80,7 +80,6 @@ class PyqQuestionCard extends StatelessWidget {
     }
 
     return Container(
-      margin: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -97,18 +96,6 @@ class PyqQuestionCard extends StatelessWidget {
           ListView(
             physics: const BouncingScrollPhysics(),
             children: [
-              Container(
-                alignment: Alignment.topLeft,
-                child: Text(
-                  originText,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
-                  ),
-                  textAlign: TextAlign.end,
-                ),
-              ),
               TeXView(
                 key: ValueKey("quiz_${mcq['docId']}"),
                 child: TeXViewColumn(
@@ -142,8 +129,8 @@ class PyqQuestionCard extends StatelessWidget {
             ],
           ),
           Positioned(
-            top: 8,
-            right: 8,
+            top: 2,
+            right: 2,
             child: IconButton(
               icon: Icon(
                 Icons.bookmark,

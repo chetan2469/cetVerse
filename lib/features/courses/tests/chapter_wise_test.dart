@@ -1,5 +1,6 @@
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/features/courses/tests/test_confirmation_page.dart';
+import 'package:cet_verse/screens/pricing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -110,7 +111,10 @@ class _ChapterWiseTestState extends State<ChapterWiseTest> {
             label: 'Upgrade',
             textColor: Colors.white,
             onPressed: () {
-              // Navigate to pricing page
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PricingPage()),
+              );
             },
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:cet_verse/features/courses/pyq/PYQTestNameList.dart';
+import 'package:cet_verse/screens/pricing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
@@ -382,7 +383,12 @@ class PYQTestYear extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: isDisabled
-            ? null
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PricingPage()),
+                );
+              }
             : () {
                 Navigator.push(
                   context,

@@ -182,9 +182,15 @@ class _StudyTypeState extends State<StudyType> {
           description:
               "Access study materials, summaries, and important formula sheets.",
           footer: notesAllowed ? 'Available' : 'Plus/Pro required',
-          isLocked: !notesAllowed,
+          isLocked: false,
           isFirstItem: false,
           onTap: () {
+            if (notesAllowed) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PricingPage()),
+              );
+            }
             if (!notesAllowed) {
               _upsell(context, 'Notes are available on Plus/Pro plans');
               return;

@@ -1,423 +1,729 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class PrivacyPolicyPage extends StatelessWidget {
+class PrivacyPolicyPage extends StatefulWidget {
   const PrivacyPolicyPage({super.key});
 
   @override
+  State<PrivacyPolicyPage> createState() => _PrivacyPolicyPageState();
+}
+
+class _PrivacyPolicyPageState extends State<PrivacyPolicyPage>
+    with TickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    ));
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _launchEmail() async {
+    final uri =
+        Uri.parse('mailto:chedotech@gmail.com?subject=Privacy Policy Inquiry');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Terms of Service and Privacy Policy'),
-        backgroundColor: Theme.of(context).primaryColor,
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                _buildSliverAppBar(screenWidth),
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      _buildHeroSection(screenWidth),
+                      SizedBox(height: screenHeight * 0.03),
+                      _buildLastUpdated(screenWidth),
+                      SizedBox(height: screenHeight * 0.02),
+                      ...buildPolicySections(screenWidth),
+                      SizedBox(height: screenHeight * 0.02),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-      body: Container(
-        color: Colors.grey.shade50,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Center(
-                child: Text(
-                  'CETverse Terms of Service and Privacy Policy',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Center(
-                child: Text(
-                  'Last Updated: April 12, 2025',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
+    );
+  }
 
-              // 1. Introduction & Agreement to Terms
-              const Text(
-                '1. Introduction & Agreement to Terms',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              const Text(
-                'Welcome to CETverse ("we," "us," or "our"). We provide an educational platform designed to assist students preparing for the MHT-CET and other examinations. These Terms of Service ("Terms") govern your access to and use of the CETverse mobile application, our website, and any content, or services (collectively, the "Services") offered by us. By creating an account, purchasing a subscription, or otherwise accessing or using our Services, you agree to be bound by these Terms and our Privacy Policy. If you do not agree to these Terms, you may not access or use our Services.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-
-              // 2. Privacy Policy
-              const Text(
-                '2. Privacy Policy',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              const Text(
-                'Our commitment to your privacy is paramount. This section outlines how we collect, use, and protect your information.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '- Information We Collect: We may collect personal information you provide to us, such as your name, email address, and academic details. We also collect usage data, such as test scores, performance analytics, and device information to enhance our Services.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- How We Use Your Data: Your data is used to personalize your learning experience, provide performance tracking, process transactions, communicate with you, and improve the overall functionality of the App.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- Data Security: We implement industry-standard security measures, including HTTPS encryption, to protect your data from unauthorized access, alteration, or disclosure.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- Data Sharing: We do not sell or rent your personal data. It may be shared with third-party service providers only to facilitate our Services (e.g., payment processing), or if required by law.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- Your Data Rights & Deletion: You have the right to access, correct, or request the deletion of your personal data. Data deletion requests can be submitted at the designated deletion request page. We will process your request in accordance with applicable laws.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // 3. Intellectual Property and Content Ownership
-              const Text(
-                '3. Intellectual Property and Content Ownership',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              const Text(
-                'All materials within the Services, including but not limited to text, graphics, logos, software, question banks, notes, and user interface designs (the "Content"), are the property of CETverse or its licensors and are protected by copyright, trademark, and other intellectual property laws.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '- Limited License: We grant you a limited, non-exclusive, non-transferable, and revocable license to access and use the Services for your personal, non-commercial educational purposes, contingent on your compliance with these Terms.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- Usage Restrictions: You agree not to reproduce, duplicate, copy, sell, resell, distribute, or otherwise exploit any portion of the Service, use of the Service, or access to the Service without express written permission from us.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // 4. Subscriptions, Pricing, and Payment
-              const Text(
-                '4. Subscriptions, Pricing, and Payment',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              const Text(
-                'CETverse offers various tiers of access to its Services:',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 110,
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: const [
-                        Text(
-                          'Starter Plan',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '₹0',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Limited access to MHT CET PYQs, 2 Free Mock Tests (Each Subject), Browse Topper Profiles (read-only).',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 110,
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.blue),
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: const [
-                        Text(
-                          'Plus Plan',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '₹129 /year',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Full access to MHT CET PYQs, Access to all Chapter-wise Notes, Topper Notes & Profiles (with downloads), Full Mock Test Series, Performance Tracking.',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 110,
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: const [
-                        Text(
-                          'Pro Plan',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '₹149 /year',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Everything in Plus, plus Solved Board PYQs (HSC Board Questions with Solutions & Handwritten), and priority access to new features.',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '- Payment and Billing: By purchasing a subscription, you authorize us to charge your chosen payment provider. All payments are handled through secure third-party payment gateways.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- Renewals: Subscriptions are for a fixed term (e.g., one year) and do not automatically renew. You will need to purchase a new subscription to continue access after the term expires.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- Refunds: All purchases are final and non-refundable.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // 5. User Conduct and Responsibilities
-              const Text(
-                '5. User Conduct and Responsibilities',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '- Account Security: You are responsible for safeguarding your account credentials. You agree to notify us immediately of any unauthorized use of your account.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- Acceptable Use: You agree not to use the Services to engage in any activity that is illegal, harmful, or fraudulent. You shall not attempt to reverse-engineer, decompile, or otherwise access the source code of the App.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- Compliance: You agree to use the Services in compliance with all applicable local, state, national, and international laws, including the Google Play Store Developer Policies.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // 6. Disclaimers and Limitation of Liability
-              const Text(
-                '6. Disclaimers and Limitation of Liability',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '- "AS IS" Service: The Services are provided "as is" and "as available" without any warranties of any kind, express or implied. While we strive for accuracy, we do not warrant that the content is accurate, complete, reliable, or error-free.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '- Limitation of Liability: To the fullest extent permitted by law, CETverse and its affiliates, officers, employees, and agents will not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses, resulting from your use of the Services.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // 7. Termination
-              const Text(
-                '7. Termination',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              const Text(
-                'We reserve the right to suspend or terminate your access to the Services at our sole discretion, without notice or liability, for any reason, including but not limited to a breach of these Terms. Upon termination, your right to use the Services will immediately cease.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-
-              // 8. Changes to Terms
-              const Text(
-                '8. Changes to Terms',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              const Text(
-                'We may modify these Terms at any time. We will provide notice of any material changes by posting the new Terms within the App or on our website. Your continued use of the Services after such changes constitutes your acceptance of the new Terms.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-
-              // 9. Governing Law and Dispute Resolution
-              const Text(
-                '9. Governing Law and Dispute Resolution',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              const Text(
-                'These Terms shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law principles. Any dispute arising from these Terms shall be subject to the exclusive jurisdiction of the courts located in Pune, Maharashtra.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-
-              // 10. Contact Information
-              const Text(
-                '10. Contact Information',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Divider(color: Colors.grey, thickness: 1),
-              const SizedBox(height: 8),
-              const Text(
-                'If you have any questions about these Terms, please contact us at chedotech@gmail.com.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const Text(
-                'Trade name - GANESH BABU GHOLAVE',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+  Widget _buildSliverAppBar(double screenWidth) {
+    return SliverAppBar(
+      expandedHeight: 120,
+      floating: false,
+      pinned: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        onPressed: () => Navigator.pop(context),
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
+          ),
+          child: const Icon(
+            Icons.arrow_back_ios,
+            color: Color(0xFF1A1A1A),
+            size: 20,
+          ),
+        ),
+      ),
+      flexibleSpace: FlexibleSpaceBar(
+        centerTitle: true,
+        title: Text(
+          'Terms & Privacy',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1A1A1A),
+          ),
+        ),
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.blue[50]!,
+                Colors.purple[50]!,
+                Colors.white,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroSection(double screenWidth) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.indigo[600]!,
+            Colors.blue[600]!,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.indigo.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.security,
+              size: 48,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Terms of Service & Privacy Policy',
+            style: GoogleFonts.poppins(
+              fontSize: screenWidth * 0.055,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Your privacy and trust are important to us.\nLearn how we protect your data and your rights.',
+            style: GoogleFonts.poppins(
+              fontSize: screenWidth * 0.035,
+              color: Colors.white.withOpacity(0.9),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLastUpdated(double screenWidth) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber[200]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.schedule, color: Colors.amber[700], size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Last Updated',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.amber[800],
+                  ),
+                ),
+                Text(
+                  'April 12, 2025',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: Colors.amber[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> buildPolicySections(double screenWidth) {
+    final sections = [
+      {
+        'title': '1. Introduction & Agreement',
+        'icon': Icons.handshake,
+        'color': Colors.blue,
+        'content':
+            'Welcome to CETverse ("we," "us," or "our"). We provide an educational platform designed to assist students preparing for the MHT-CET and other examinations. These Terms of Service ("Terms") govern your access to and use of the CETverse mobile application, our website, and any content, or services (collectively, the "Services") offered by us. By creating an account, purchasing a subscription, or otherwise accessing or using our Services, you agree to be bound by these Terms and our Privacy Policy.',
+      },
+      {
+        'title': '2. Privacy & Data Protection',
+        'icon': Icons.privacy_tip,
+        'color': Colors.green,
+        'content':
+            'Our commitment to your privacy is paramount. This section outlines how we collect, use, and protect your information.',
+        'subSections': [
+          'Information We Collect: Personal information you provide, usage data, test scores, performance analytics, and device information.',
+          'How We Use Your Data: Personalize learning experience, provide performance tracking, process transactions, and improve functionality.',
+          'Data Security: Industry-standard security measures including HTTPS encryption to protect your data.',
+          'Data Sharing: We do not sell personal data. May be shared with service providers or if required by law.',
+          'Your Rights: Access, correct, or request deletion of your personal data through our deletion request page.',
+        ],
+      },
+      {
+        'title': '3. Intellectual Property',
+        'icon': Icons.copyright,
+        'color': Colors.purple,
+        'content':
+            'All materials within the Services, including text, graphics, logos, software, question banks, notes, and user interface designs are the property of CETverse or its licensors and are protected by intellectual property laws.',
+        'subSections': [
+          'Limited License: Non-exclusive, non-transferable license for personal, non-commercial educational purposes.',
+          'Usage Restrictions: No reproduction, copying, selling, or distribution without express written permission.',
+        ],
+      },
+      {
+        'title': '4. Subscription Plans',
+        'icon': Icons.card_membership,
+        'color': Colors.orange,
+        'content': 'CETverse offers various tiers of access to its Services:',
+        'isPlansSection': true,
+      },
+      {
+        'title': '5. User Conduct',
+        'icon': Icons.verified_user,
+        'color': Colors.teal,
+        'content': 'Guidelines for responsible use of our services.',
+        'subSections': [
+          'Account Security: Safeguard your credentials and notify us of unauthorized use.',
+          'Acceptable Use: No illegal, harmful, or fraudulent activities. No reverse-engineering attempts.',
+          'Compliance: Use Services in compliance with all applicable laws and Google Play Store policies.',
+        ],
+      },
+      {
+        'title': '6. Disclaimers & Liability',
+        'icon': Icons.warning,
+        'color': Colors.red,
+        'content':
+            'Important limitations and disclaimers regarding our services.',
+        'subSections': [
+          '"AS IS" Service: Services provided without warranties. We strive for accuracy but don\'t warrant error-free content.',
+          'Limitation of Liability: Not liable for indirect, incidental, or consequential damages, loss of profits, or data.',
+        ],
+      },
+      {
+        'title': '7. Termination',
+        'icon': Icons.exit_to_app,
+        'color': Colors.grey,
+        'content':
+            'We reserve the right to suspend or terminate your access to the Services at our sole discretion, without notice or liability, for any reason, including but not limited to a breach of these Terms. Upon termination, your right to use the Services will immediately cease.',
+      },
+      {
+        'title': '8. Changes to Terms',
+        'icon': Icons.update,
+        'color': Colors.indigo,
+        'content':
+            'We may modify these Terms at any time. We will provide notice of material changes by posting new Terms within the App. Your continued use constitutes acceptance of the new Terms.',
+      },
+      {
+        'title': '9. Governing Law',
+        'icon': Icons.gavel,
+        'color': Colors.brown,
+        'content':
+            'These Terms shall be governed by the laws of India, without regard to conflict of law principles. Any disputes shall be subject to the exclusive jurisdiction of courts in Pune, Maharashtra.',
+      },
+    ];
+
+    // Convert sections to widgets
+    List<Widget> sectionWidgets = sections.map((section) {
+      return Container(
+        margin:
+            EdgeInsets.symmetric(horizontal: screenWidth * 0.06, vertical: 8),
+        child: section['isPlansSection'] == true
+            ? _buildPlansSection(section, screenWidth)
+            : _buildPolicySection(section, screenWidth),
+      );
+    }).toList();
+
+    // Add contact section
+    sectionWidgets.add(_buildContactSection(screenWidth));
+
+    return sectionWidgets;
+  }
+
+  Widget _buildPolicySection(Map<String, dynamic> section, double screenWidth) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (section['color'] as Color).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    section['icon'] as IconData,
+                    color: section['color'] as Color,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    section['title'] as String,
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    section['content'] as String,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: const Color(0xFF374151),
+                      height: 1.5,
+                    ),
+                  ),
+                  if (section['subSections'] != null) ...[
+                    const SizedBox(height: 16),
+                    ...(section['subSections'] as List<String>)
+                        .map((subSection) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(top: 6),
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: section['color'] as Color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                subSection,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  color: const Color(0xFF374151),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlansSection(Map<String, dynamic> section, double screenWidth) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.card_membership,
+                    color: Colors.orange,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    section['title'] as String,
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              section['content'] as String,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFF374151),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Column(
+              children: [
+                _buildPlanCard(
+                    'Starter Plan',
+                    '₹0',
+                    'Limited MHT CET PYQs, 2 Free Mock Tests, Browse Topper Profiles (read-only)',
+                    Colors.green),
+                const SizedBox(height: 12),
+                _buildPlanCard(
+                    'Plus Plan',
+                    '₹129/year',
+                    'Full MHT CET PYQs, Chapter-wise Notes, Topper Notes & Profiles, Full Mock Tests, Performance Tracking',
+                    Colors.blue),
+                const SizedBox(height: 12),
+                _buildPlanCard(
+                    'Pro Plan',
+                    '₹149/year',
+                    'Everything in Plus, Solved Board PYQs, Priority access to new features',
+                    Colors.purple),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPolicyPoint(
+                      'Payment and Billing: Secure third-party payment gateways handle all transactions.'),
+                  _buildPolicyPoint(
+                      'Renewals: Fixed-term subscriptions that don\'t auto-renew. Purchase new subscription after expiry.'),
+                  _buildPolicyPoint(
+                      'Refunds: All purchases are final and non-refundable.'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlanCard(
+      String title, String price, String features, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                price,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1A1A1A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            features,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: const Color(0xFF374151),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPolicyPoint(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: Colors.orange,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: const Color(0xFF374151),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactSection(double screenWidth) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.grey[50]!, Colors.white],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _launchEmail,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue[400]!, Colors.blue[600]!],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.contact_support,
+                    size: 32,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Questions About Our Terms?',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1A1A1A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Contact us for any questions about these terms or privacy policy',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: const Color(0xFF6B7280),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Text(
+                        'Trade Name: GANESH BABU GHOLAVE',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: const Color(0xFF374151),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.touch_app,
+                        size: 16, color: Color(0xFF6B7280)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Tap to send email',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

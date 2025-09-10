@@ -1,11 +1,53 @@
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/paymentGetway/RazorpayQuickPayPage.dart';
+import 'package:cet_verse/screens/NeedHelp.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class PricingPage extends StatelessWidget {
+class PricingPage extends StatefulWidget {
   const PricingPage({super.key});
+
+  @override
+  State<PricingPage> createState() => _PricingPageState();
+}
+
+class _PricingPageState extends State<PricingPage>
+    with TickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    ));
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   // --- helpers ---
   int _levelFor(String? plan) {
@@ -24,9 +66,7 @@ class PricingPage extends StatelessWidget {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final phone = auth.userPhoneNumber;
     if (phone == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to activate')),
-      );
+      _showErrorMessage('Please log in to activate');
       return;
     }
     try {
@@ -55,13 +95,9 @@ class PricingPage extends StatelessWidget {
         SetOptions(merge: true),
       );
       await auth.fetchUserData(phone);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Starter plan activated')),
-      );
+      _showSuccessMessage('Starter plan activated successfully!');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed: $e')),
-      );
+      _showErrorMessage('Failed to activate plan: $e');
     }
   }
 
@@ -73,9 +109,7 @@ class PricingPage extends StatelessWidget {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final phone = auth.userPhoneNumber;
     if (phone == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to purchase a plan')),
-      );
+      _showErrorMessage('Please log in to purchase a plan');
       return;
     }
     final result = await Navigator.push(
@@ -92,13 +126,9 @@ class PricingPage extends StatelessWidget {
     );
     if (result is Map && result['ok'] == true) {
       await auth.fetchUserData(phone);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$planCode plan activated successfully!')),
-      );
+      _showSuccessMessage('$planCode plan activated successfully!');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment not completed')),
-      );
+      _showErrorMessage('Payment not completed');
     }
   }
 
@@ -108,348 +138,652 @@ class PricingPage extends StatelessWidget {
     final currentPlan = auth.getPlanType ?? 'Starter';
     final currentLevel = _levelFor(currentPlan);
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Unlock Your Potential',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                _buildSliverAppBar(screenWidth),
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      _buildHeroSection(screenWidth),
+                      SizedBox(height: screenHeight * 0.03),
+                      _buildPricingCards(context, currentLevel, screenWidth),
+                      SizedBox(height: screenHeight * 0.04),
+                      _buildPaymentMethods(screenWidth),
+                      SizedBox(height: screenHeight * 0.02),
+                      _buildFooterSection(screenWidth),
+                      SizedBox(height: screenHeight * 0.02),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          textAlign: TextAlign.center,
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.black87,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade50, Colors.white],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+    );
+  }
+
+  Widget _buildSliverAppBar(double screenWidth) {
+    return SliverAppBar(
+      expandedHeight: 120,
+      floating: false,
+      pinned: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        onPressed: () => Navigator.pop(context),
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.arrow_back_ios,
+            color: Color(0xFF1A1A1A),
+            size: 20,
           ),
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Header Section - Compact
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Column(
-                  children: [
-                    Text(
-                      'Choose the perfect plan for your CET preparation',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                      textAlign: TextAlign.center,
+      ),
+      flexibleSpace: FlexibleSpaceBar(
+        centerTitle: true,
+        title: Text(
+          'Choose Your Plan',
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1A1A1A),
+          ),
+        ),
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.blue[50]!,
+                Colors.purple[50]!,
+                Colors.white,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroSection(double screenWidth) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.blue[600]!,
+            Colors.purple[600]!,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.rocket_launch,
+            size: 48,
+            color: Colors.white,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Unlock Your Full Potential',
+            style: GoogleFonts.poppins(
+              fontSize: screenWidth * 0.06,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Choose the perfect plan for your CET preparation journey\nand achieve your dream score',
+            style: GoogleFonts.poppins(
+              fontSize: screenWidth * 0.035,
+              color: Colors.white.withOpacity(0.9),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPricingCards(
+      BuildContext context, int currentLevel, double screenWidth) {
+    final plans = ['Starter', 'Plus', 'Pro'];
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+      child: Column(
+        children: plans.map((plan) {
+          final index = plans.indexOf(plan);
+          return AnimatedContainer(
+            duration: Duration(milliseconds: 300 + (index * 100)),
+            margin: const EdgeInsets.only(bottom: 16),
+            child: _buildPlanCard(context, plan, currentLevel, screenWidth),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildPlanCard(BuildContext context, String planType, int currentLevel,
+      double screenWidth) {
+    final planData = _getPlanData(planType);
+    final level = _levelFor(planType);
+    final isCurrent = currentLevel == level;
+    final isDisabled = currentLevel > level;
+    final isPopular = planType == 'Pro';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: isCurrent
+                ? Colors.green.withOpacity(0.2)
+                : isPopular
+                    ? Colors.purple.withOpacity(0.15)
+                    : Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: isCurrent
+            ? Border.all(color: Colors.green, width: 2)
+            : isPopular
+                ? Border.all(color: Colors.purple, width: 2)
+                : null,
+      ),
+      child: Stack(
+        children: [
+          if (isPopular)
+            Positioned(
+              top: 0,
+              left: 20,
+              right: 20,
+              child: Container(
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange[400]!, Colors.orange[600]!],
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '🔥 MOST POPULAR',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                  ],
+                  ),
                 ),
               ),
-              // Plans Section - Horizontal Layout for larger screens, Vertical for smaller
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: screenWidth > 600
-                    ? IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                                child: _buildPlanCard(
-                                    context, 'Starter', currentLevel)),
-                            const SizedBox(width: 12),
-                            Expanded(
-                                child: _buildPlanCard(
-                                    context, 'Plus', currentLevel)),
-                            const SizedBox(width: 12),
-                            Expanded(
-                                child: _buildPlanCard(
-                                    context, 'Pro', currentLevel)),
-                          ],
-                        ),
-                      )
-                    : Column(
+            ),
+          Padding(
+            padding: EdgeInsets.all(24).copyWith(top: isPopular ? 44 : 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildPlanCard(context, 'Starter', currentLevel),
-                          const SizedBox(height: 12),
-                          _buildPlanCard(context, 'Plus', currentLevel),
-                          const SizedBox(height: 12),
-                          _buildPlanCard(context, 'Pro', currentLevel),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: planType == 'Pro'
+                                        ? [
+                                            Colors.purple[400]!,
+                                            Colors.purple[600]!
+                                          ]
+                                        : planType == 'Plus'
+                                            ? [
+                                                Colors.blue[400]!,
+                                                Colors.blue[600]!
+                                              ]
+                                            : [
+                                                Colors.green[400]!,
+                                                Colors.green[600]!
+                                              ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  planType == 'Pro'
+                                      ? Icons.diamond
+                                      : planType == 'Plus'
+                                          ? Icons.star
+                                          : Icons.favorite,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    planData['name'],
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1A1A1A),
+                                    ),
+                                  ),
+                                  Text(
+                                    planData['subtitle'] ?? '',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: const Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                planData['price'],
+                                style: GoogleFonts.poppins(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: planType == 'Pro'
+                                      ? Colors.purple[600]
+                                      : planType == 'Plus'
+                                          ? Colors.blue[600]
+                                          : Colors.green[600],
+                                ),
+                              ),
+                              if (planData['period'] != null)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(left: 4, bottom: 4),
+                                  child: Text(
+                                    planData['period'],
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: const Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ],
                       ),
-              ),
-              // Payment Methods - Compact
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
                     ),
+                    if (isCurrent)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.check_circle,
+                                color: Colors.white, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              'ACTIVE',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'What you\'ll get:',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF374151),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...planData['features'].map<Widget>((feature) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: feature['available']
+                                      ? Colors.green[100]
+                                      : Colors.grey[200],
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  feature['available']
+                                      ? Icons.check
+                                      : Icons.close,
+                                  size: 14,
+                                  color: feature['available']
+                                      ? Colors.green[600]
+                                      : Colors.grey[500],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  feature['text'],
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    color: feature['available']
+                                        ? const Color(0xFF374151)
+                                        : const Color(0xFF9CA3AF),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: (isCurrent || isDisabled)
+                        ? null
+                        : () {
+                            if (planType == 'Starter') {
+                              _activateFreePlan(context);
+                            } else {
+                              _startPaidPlan(
+                                context,
+                                planCode: planType,
+                                rupees: planType == 'Plus' ? 129 : 149,
+                              );
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isCurrent || isDisabled
+                          ? Colors.grey[300]
+                          : planType == 'Pro'
+                              ? Colors.purple[600]
+                              : planType == 'Plus'
+                                  ? Colors.blue[600]
+                                  : Colors.green[600],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: isCurrent || isDisabled ? 0 : 4,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.payment,
-                            color: Colors.blue.shade600, size: 20),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Accepted Payment Methods',
-                          style: TextStyle(
+                        if (!isCurrent && !isDisabled)
+                          Icon(
+                            planType == 'Starter'
+                                ? Icons.rocket_launch
+                                : Icons.upgrade,
+                            size: 20,
+                          ),
+                        if (!isCurrent && !isDisabled) const SizedBox(width: 8),
+                        Text(
+                          isCurrent
+                              ? 'Current Plan'
+                              : isDisabled
+                                  ? 'Downgrade N/A'
+                                  : planType == 'Starter'
+                                      ? 'Get Started Free'
+                                      : 'Upgrade Now',
+                          style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      children: [
-                        _buildPaymentChip('UPI', Icons.account_balance_wallet),
-                        _buildPaymentChip('Cards', Icons.credit_card),
-                        _buildPaymentChip('Net Banking', Icons.account_balance),
-                        _buildPaymentChip('Wallets', Icons.wallet),
-                      ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethods(double screenWidth) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green[400]!, Colors.green[600]!],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.security,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Secure Payment Methods',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    Text(
+                      'Your data is protected with 256-bit SSL encryption',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: const Color(0xFF6B7280),
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentChip(String label, IconData icon) {
-    return Chip(
-      avatar: Icon(icon, size: 16, color: Colors.grey.shade600),
-      label: Text(
-        label,
-        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-      ),
-      backgroundColor: Colors.grey.shade100,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-
-  Widget _buildPlanCard(
-      BuildContext context, String planType, int currentLevel) {
-    final planData = _getPlanData(planType);
-    final level = _levelFor(planType);
-    final isCurrent = currentLevel == level;
-    final isDisabled = currentLevel > level;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isCurrent
-              ? [Colors.blue.shade100, Colors.blue.shade50]
-              : planType == 'Pro'
-                  ? [Colors.purple.shade50, Colors.white]
-                  : [Colors.white, Colors.grey.shade50],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+          const SizedBox(height: 20),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 3,
+            children: [
+              _buildPaymentMethodCard(
+                  'UPI', Icons.account_balance_wallet, Colors.purple),
+              _buildPaymentMethodCard('Cards', Icons.credit_card, Colors.blue),
+              _buildPaymentMethodCard(
+                  'Net Banking', Icons.account_balance, Colors.green),
+              _buildPaymentMethodCard('Wallets', Icons.wallet, Colors.orange),
+            ],
           ),
         ],
-        border: isCurrent
-            ? Border.all(color: Colors.blue.shade400, width: 2)
-            : planType == 'Pro'
-                ? Border.all(color: Colors.purple.shade200, width: 1)
-                : null,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header with badge
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        planData['name'],
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        planData['price'],
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: planType == 'Pro'
-                              ? Colors.purple.shade600
-                              : Colors.blue.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isCurrent)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade600,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'ACTIVE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )
-                else if (planType == 'Pro')
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade600,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'POPULAR',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Features - Compact with icons
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Key Features:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Column(
-                  children: planData['features'].map<Widget>((feature) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(
-                            feature['available']
-                                ? Icons.check_circle
-                                : Icons.cancel,
-                            size: 16,
-                            color: feature['available']
-                                ? Colors.green.shade600
-                                : Colors.grey.shade400,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              feature['text'],
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: feature['available']
-                                    ? Colors.grey.shade800
-                                    : Colors.grey.shade500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Action Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: (isCurrent || isDisabled)
-                    ? null
-                    : () {
-                        if (planType == 'Starter') {
-                          _activateFreePlan(context);
-                        } else {
-                          _startPaidPlan(
-                            context,
-                            planCode: planType,
-                            rupees: planType == 'Plus' ? 129 : 149,
-                          );
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isCurrent || isDisabled
-                      ? Colors.grey.shade300
-                      : planType == 'Pro'
-                          ? Colors.purple.shade600
-                          : planType == 'Plus'
-                              ? Colors.blue.shade600
-                              : Colors.green.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  elevation: isCurrent || isDisabled ? 0 : 2,
-                ),
-                child: Text(
-                  isCurrent
-                      ? 'Current Plan'
-                      : isDisabled
-                          ? 'Downgrade N/A'
-                          : planType == 'Starter'
-                              ? 'Get Started'
-                              : 'Upgrade Now',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+    );
+  }
+
+  Widget _buildPaymentMethodCard(String label, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterSection(double screenWidth) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.grey[50]!, Colors.white],
         ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.help_outline,
+            size: 32,
+            color: Colors.blue[600],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Need Help Choosing?',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1A1A1A),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Contact our support team for personalized recommendations',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: const Color(0xFF6B7280),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NeedHelp()),
+              );
+            },
+            child: Text(
+              'Contact Support',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.blue[600],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -459,44 +793,76 @@ class PricingPage extends StatelessWidget {
       case 'Starter':
         return {
           'name': 'Starter Plan',
+          'subtitle': 'Perfect for beginners',
           'price': 'FREE',
+          'period': null,
           'features': [
-            {'text': 'Limited MHT CET PYQs', 'available': true},
-            {'text': '1 Mock Test/Subject', 'available': true},
-            {'text': 'Basic Performance Track', 'available': true},
-            {'text': 'Read-only Topper Profiles', 'available': true},
-            {'text': 'Board PYQs Access', 'available': false},
-            {'text': 'Chapter Notes Download', 'available': false},
+            {'text': 'Limited MHT CET PYQs access', 'available': true},
+            {'text': '1 Mock test per subject', 'available': true},
+            {'text': 'Basic performance tracking', 'available': true},
+            {'text': 'Read-only topper profiles', 'available': true},
+            {'text': 'Board PYQs access', 'available': false},
+            {'text': 'Chapter-wise notes download', 'available': false},
           ]
         };
       case 'Plus':
         return {
           'name': 'Plus Plan',
-          'price': '₹129/year',
+          'subtitle': 'Most comprehensive preparation',
+          'price': '₹129',
+          'period': '/year',
           'features': [
             {'text': 'Unlimited MHT CET PYQs', 'available': true},
-            {'text': 'Board PYQs Access', 'available': true},
-            {'text': 'Chapter-wise Notes', 'available': true},
-            {'text': 'Topper Notes Download', 'available': true},
-            {'text': '2 Mock Tests/Subject', 'available': true},
-            {'text': 'Full Mock Test Series', 'available': false},
+            {'text': 'Complete Board PYQs access', 'available': true},
+            {'text': 'Chapter-wise notes & materials', 'available': true},
+            {'text': 'Topper notes download', 'available': true},
+            {'text': '2 Mock tests per subject', 'available': true},
+            {'text': 'Full mock test series', 'available': false},
           ]
         };
       case 'Pro':
         return {
           'name': 'Pro Plan',
-          'price': '₹149/year',
+          'subtitle': 'Ultimate CET preparation',
+          'price': '₹149',
+          'period': '/year',
           'features': [
-            {'text': 'Everything in Plus', 'available': true},
-            {'text': 'Full Mock Test Series', 'available': true},
-            {'text': 'Complete Topper Profiles', 'available': true},
-            {'text': 'Priority Feature Access', 'available': true},
-            {'text': 'Advanced Analytics', 'available': true},
-            {'text': 'Premium Support', 'available': true},
+            {'text': 'Everything in Plus plan', 'available': true},
+            {'text': 'Complete mock test series', 'available': true},
+            {'text': 'Full topper profiles access', 'available': true},
+            {'text': 'Priority feature access', 'available': true},
+            {'text': 'Advanced performance analytics', 'available': true},
+            {'text': 'Premium support & guidance', 'available': true},
           ]
         };
       default:
         return {};
     }
+  }
+
+  void _showSuccessMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showErrorMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 }
