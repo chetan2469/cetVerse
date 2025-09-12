@@ -112,8 +112,8 @@ class AboutUsPage extends StatelessWidget {
             style:
                 GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
-        _buildContactRow(Icons.email, "Email", "support@cetverse.com"),
-        _buildContactRow(Icons.phone, "Phone", "+91 9876543210"),
+        _buildContactRow(Icons.email, "Email", "cetverse@gmail.com"),
+        _buildContactRow(Icons.phone, "Phone", "+91 9284752764"),
         _buildContactRow(
             Icons.location_on, "Address", "Pune, Maharashtra, India"),
       ],

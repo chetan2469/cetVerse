@@ -1,10 +1,11 @@
-import 'package:cet_verse/core/auth/phone_auth_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:intl/intl.dart';
+
+import 'package:cet_verse/core/auth/phone_auth_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 class RegisterNewUserScreen extends StatefulWidget {
   const RegisterNewUserScreen({super.key});
@@ -1049,9 +1050,9 @@ class _RegisterNewUserScreenState extends State<RegisterNewUserScreen>
         'createdAt': FieldValue.serverTimestamp(),
         'userType': "Student",
 
-        // Starter subscription & features
+        // Nova subscription & features
         'subscription': {
-          'planType': 'Starter',
+          'planType': 'Nova',
           'status': 'active',
           'startDate': FieldValue.serverTimestamp(),
           'endDate': null,

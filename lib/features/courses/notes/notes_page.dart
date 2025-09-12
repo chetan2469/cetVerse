@@ -1,14 +1,15 @@
 import 'dart:io';
+
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/features/courses/notes/add_chapter_page.dart';
 import 'package:cet_verse/features/courses/notes/pdf_viewer_page.dart';
 import 'package:cet_verse/screens/pricing_page.dart';
 import 'package:cet_verse/ui/components/my_drawer.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -188,7 +189,7 @@ class _NotesPageState extends State<NotesPage> {
     if (!canSeeNotes) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Notes are available on Plus/Pro plans'),
+          content: const Text('Notes are available on Orbit/Galaxy plans'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

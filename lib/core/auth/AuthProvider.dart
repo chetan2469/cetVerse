@@ -24,7 +24,7 @@ class AuthProvider with ChangeNotifier {
 
   // ===== Subscription / Plan =====
   String? userType; // "Student" / "Admin"
-  String? planType; // "Starter" / "Plus" / "Pro"
+  String? planType; // "Nova" / "Orbit" / "Galaxy"
   String? subscriptionStatus; // "active" / "expired" / null
   num? amountPaid; // last payment
   String? paymentMethod; // 'razorpay' / 'none' / null
@@ -54,7 +54,7 @@ class AuthProvider with ChangeNotifier {
   bool get priorityFeatureAccess =>
       (_features['priorityFeatureAccess'] as bool?) ?? false;
 
-  /// Tests count: if `fullMockTestSeries==true` (Pro equivalence), treat as Unlimited.
+  /// Tests count: if `fullMockTestSeries==true` (Galaxy equivalence), treat as Unlimited.
   int get mockTestsPerSubject {
     if (fullMockTestSeries || isPro) return 9999; // Unlimited for UI/gating
     final raw = _features['mockTestsPerSubject'];
@@ -62,9 +62,9 @@ class AuthProvider with ChangeNotifier {
   }
 
   // ---- Plan flags (case-insensitive) ----
-  bool get isStarter => (planType ?? 'Starter').toLowerCase() == 'starter';
-  bool get isPlus => (planType ?? '').toLowerCase() == 'plus';
-  bool get isPro => (planType ?? '').toLowerCase() == 'pro';
+  bool get isStarter => (planType ?? 'Nova').toLowerCase() == 'nova';
+  bool get isPlus => (planType ?? '').toLowerCase() == 'orbit';
+  bool get isPro => (planType ?? '').toLowerCase() == 'galaxy';
   bool get isAdmin => (userType ?? '').toLowerCase() == 'admin';
 
   // ===== Solve stats =====
@@ -298,10 +298,10 @@ class AuthProvider with ChangeNotifier {
 
     // Ensure subscription defaults for missing docs
     if (planType == null) {
-      planType = 'Starter';
+      planType = 'Nova';
       FirebaseFirestore.instance.collection('users').doc(userPhoneNumber).set({
         'subscription': {
-          'planType': 'Starter',
+          'planType': 'Nova',
           'status': 'active',
           'amountPaid': 0,
           'paymentMethod': 'none',
@@ -316,7 +316,7 @@ class AuthProvider with ChangeNotifier {
     if (f != null) {
       _features = Map<String, dynamic>.from(f);
     } else {
-      // Starter defaults
+      // Nova defaults
       _features = {
         'mhtCetPyqsAccess': 'limited',
         'boardPyqsAccess': false,

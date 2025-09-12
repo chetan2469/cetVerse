@@ -1,5 +1,6 @@
-import 'package:cet_verse/core/auth/phone_auth_screen.dart';
 import 'package:cet_verse/core/auth/AuthProvider.dart';
+import 'package:cet_verse/core/auth/phone_auth_screen.dart';
+import 'package:cet_verse/features/courses/leaderboard/leaderboard.dart';
 import 'package:cet_verse/screens/NeedHelp.dart';
 import 'package:cet_verse/screens/PrivacyPolicyPage.dart';
 import 'package:cet_verse/screens/pricing_page.dart';
@@ -7,8 +8,8 @@ import 'package:cet_verse/screens/profile_page.dart';
 import 'package:cet_verse/ui/components/ProgressPage.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class MyDrawer extends StatelessWidget {
   const MyDrawer({super.key});
@@ -63,7 +64,7 @@ class MyDrawer extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [
                   Colors.indigo.shade700,
-                  authProvider.planType != "Starter"
+                  authProvider.planType != "Nova"
                       ? Colors.indigo.shade400
                       : Colors.indigo.shade400
                 ],
@@ -120,6 +121,12 @@ class MyDrawer extends StatelessWidget {
           //   title: 'Share & Earn',
           //   onTap: () => _navigateToPage(context, 'Share & Earn'),
           // ),
+          _buildMenuItem(
+            context,
+            icon: Icons.leaderboard,
+            title: 'Leaderboard',
+            onTap: () => _navigateToPage(context, 'Leaderboard'),
+          ),
           // Logout Button
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
@@ -184,6 +191,12 @@ class MyDrawer extends StatelessWidget {
         break;
       case 'Share & Earn':
         // Navigate to Share & Earn Page
+        break;
+      case 'Leaderboard':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LeaderboardPage()),
+        );
         break;
       case 'My Analysis':
         Navigator.push(

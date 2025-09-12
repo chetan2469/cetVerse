@@ -1,11 +1,14 @@
 import 'dart:async';
+
 import 'package:cet_verse/core/auth/AuthProvider.dart';
+import 'package:cet_verse/features/courses/pyq/tests/new_test_view/widets.dart';
 import 'package:cet_verse/features/courses/tests/test_result_page.dart';
+import 'package:cet_verse/ui/theme/constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tex/flutter_tex.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import 'package:cet_verse/ui/theme/constants.dart';
+
 import 'MockTestSideBar.dart';
 
 class TestTakingPage extends StatefulWidget {
@@ -38,6 +41,8 @@ class _TestTakingPageState extends State<TestTakingPage> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  final Map<int, Widget> _questionCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -65,9 +70,7 @@ class _TestTakingPageState extends State<TestTakingPage> {
           _timeRemaining--;
         } else {
           timer.cancel();
-          if (!_hasSubmitted) {
-            _submitTest();
-          }
+          if (!_hasSubmitted) _submitTest();
         }
       });
     });
@@ -113,65 +116,6 @@ class _TestTakingPageState extends State<TestTakingPage> {
         );
       }
     });
-  }
-
-  Future<void> _showBackConfirmation(BuildContext context) async {
-    final bool? shouldPop = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false, // User must tap a button
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.help_outline, color: Colors.blue, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Go Back?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: const Text(
-            'Are you sure you want to go back? Your progress will be lost.',
-            style: TextStyle(fontSize: 14),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: Colors.blue, fontSize: 14),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-              child: const Text(
-                'Go Back',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    // Only pop if user confirmed
-    if (shouldPop == true && context.mounted) {
-      Navigator.pop(context);
-    }
   }
 
   void _selectAnswer(String id) {
@@ -326,7 +270,7 @@ class _TestTakingPageState extends State<TestTakingPage> {
     );
   }
 
-  void _submitTest() {
+  void _submitTest() async {
     if (_hasSubmitted) return;
     _timer.cancel();
     setState(() => _hasSubmitted = true);
@@ -355,24 +299,120 @@ class _TestTakingPageState extends State<TestTakingPage> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final userPhoneNumber = authProvider.userPhoneNumber;
 
-    if (userPhoneNumber != null) {
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(userPhoneNumber)
-          .collection('testHistory')
-          .add({
-        'score': score,
-        'timeleft': timeLeft,
-        'accuracy': accuracy,
-        'correct': correctCount,
-        'wrong': wrongCount,
-        'unattempted': unansweredCount,
-        'level': widget.level,
-        'subject': widget.subject,
-        'chapter': widget.chapter,
-        'testnumber': widget.testNumber,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+    // Show loading dialog while saving to Firebase
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      if (userPhoneNumber != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userPhoneNumber)
+            .collection('testHistory')
+            .add({
+          'score': score,
+          'timeleft': timeLeft,
+          'accuracy': accuracy,
+          'correct': correctCount,
+          'wrong': wrongCount,
+          'unattempted': unansweredCount,
+          'level': widget.level,
+          'subject': widget.subject,
+          'chapter': widget.chapter,
+          'testnumber': widget.testNumber,
+          'timestamp': FieldValue.serverTimestamp(),
+          'attempted': attemptedCount, //new
+          'totalQuestion': widget.mcqs.length, //new
+        });
+
+        // await FirebaseFirestore.instance
+        //     .collection('users')
+        //     .doc(userPhoneNumber)
+        //     .update({
+        //   'stats.totalTestMark': FieldValue.increment(widget.mcqs.length),
+        //   'stats.totalScore': FieldValue.increment(correctCount),
+        //   'stats.totalWrong': FieldValue.increment(wrongCount),
+        //   'stats.totalAttempted': FieldValue.increment(attemptedCount),
+        //   'stats.totalUnattempted': FieldValue.increment(unansweredCount),
+        //   'stats.totalAccuracy': FieldValue.increment(double.parse(accuracy)),
+        //   'stats.totalTests': FieldValue.increment(1),
+        //   'stats.lastUpdated': FieldValue.serverTimestamp(),
+        // });
+
+        // 2. Fetch existing stats + user info
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userPhoneNumber)
+            .get();
+
+        final data = userDoc.data() ?? {};
+        final stats = Map<String, dynamic>.from(data['stats'] ?? {});
+
+        final oldScore = (stats['rankScore'] ?? 0.0).toDouble();
+        final oldAttempts = (stats['totalAttempted'] ?? 0).toDouble();
+        final oldTotalScore = (stats['totalScore'] ?? 0).toInt();
+        final oldTotalWrong = (stats['totalWrong'] ?? 0).toInt();
+        final oldAccuracySum = (stats['totalAccuracySum'] ?? 0.0).toDouble();
+        final oldTests = (stats['totalTests'] ?? 0).toInt();
+
+        final newAttempts = attemptedCount.toDouble();
+        final newAccuracy =
+            attemptedCount > 0 ? correctCount / attemptedCount : 0.0;
+
+        // 3. Apply PDF formula (rolling score)
+        final newRankScore = (oldAttempts + newAttempts) == 0
+            ? newAccuracy
+            : ((oldScore * oldAttempts) + (newAccuracy * newAttempts)) /
+                (oldAttempts + newAttempts);
+
+        final formattedRankScore =
+            double.parse(newRankScore.toStringAsFixed(1));
+
+        // 4. Build new stats map
+        final updatedStats = {
+          'totalScore': oldTotalScore + correctCount,
+          'totalWrong': oldTotalWrong + wrongCount,
+          'totalAttempted': oldAttempts.toInt() + attemptedCount,
+          'totalAccuracySum': oldAccuracySum + double.parse(accuracy),
+          'totalTests': oldTests + 1,
+          'rankScore': formattedRankScore,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        };
+
+        // 5. Update user stats (replace whole map)
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userPhoneNumber)
+            .update({'stats': updatedStats});
+
+        // 6. Update leaderboard entry
+        await FirebaseFirestore.instance
+            .collection('leaderboard')
+            .doc(userPhoneNumber)
+            .set({
+          if (data['name'] != null) 'name': data['name'],
+          if (data['city'] != null) 'city': data['city'],
+          'rankScore': formattedRankScore,
+          'totalScore': updatedStats['totalScore'],
+          'totalTests': updatedStats['totalTests'],
+          'avgAccuracy': double.parse(
+              (updatedStats['totalAccuracySum'] / updatedStats['totalTests'])
+                  .toStringAsFixed(6)),
+          'lastUpdated': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      // Handle Firebase errors if needed
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit test: $e')),
+      );
+    } finally {
+      Navigator.pop(context); // Close loading dialog
     }
 
     Navigator.pushReplacement(
@@ -412,164 +452,156 @@ class _TestTakingPageState extends State<TestTakingPage> {
   Widget build(BuildContext context) {
     final totalQuestions = widget.mcqs.length;
 
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Colors.white,
-      endDrawer: MockTestSideBar(
-        userAnswers: userAnswers,
-        reviewedQuestions: reviewedQuestions,
-        mcqs: widget.mcqs,
-        subject: widget.subject,
-        hasSubmitted: _hasSubmitted,
-        onJumpToQuestion: _jumpToQuestion,
-      ),
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          final bool? shouldPop = await showBackConfirmation2(context);
+          if (shouldPop == true && context.mounted) {
+            Navigator.pop(context);
+          }
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
         backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.blueGrey),
-          onPressed: () => _showBackConfirmation(context),
+        endDrawer: MockTestSideBar(
+          userAnswers: userAnswers,
+          reviewedQuestions: reviewedQuestions,
+          mcqs: widget.mcqs,
+          subject: widget.subject,
+          hasSubmitted: _hasSubmitted,
+          onJumpToQuestion: _jumpToQuestion,
         ),
-        title: Text(
-          "Test ${widget.testNumber} - ${widget.subject}",
-          style: AppTheme.subheadingStyle.copyWith(
-            fontSize: 18,
-            color: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
           ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: Colors.indigoAccent),
-            onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Stats Header Card
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 16),
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              color: Colors.white,
-              shadowColor: Colors.grey.withOpacity(0.3),
-              child: Container(
-                padding: EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatItem(
-                        icon: Icons.quiz_outlined,
-                        label: 'Attempted',
-                        value:
-                            '${widget.mcqs.length - countUnansweredQuestions()}/$totalQuestions',
-                        color: Colors.indigoAccent,
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildStatItem(
-                        icon: Icons.schedule_outlined,
-                        label: 'Time Left',
-                        value: _formatTime(_timeRemaining),
-                        color: _timeRemaining < 60 ? Colors.red : Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          title: Text(
+            "Test ${widget.testNumber} - ${widget.subject}",
+            style: AppTheme.subheadingStyle.copyWith(
+              fontSize: 18,
+              color: Colors.black,
             ),
           ),
-
-          // Question Card
-          Expanded(
-            child: Container(
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.menu, color: Colors.indigoAccent),
+              onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            // Stats Header Card
+            Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
-              child: GestureDetector(
-                onHorizontalDragEnd: _onSwipe,
-                child: _buildQuestionCard(
-                    _currentIndex, widget.mcqs[_currentIndex]),
-              ),
-            ),
-          ),
-
-          // Navigation Controls
-          Container(
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              color: Colors.white,
-              shadowColor: Colors.grey.withOpacity(0.3),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    // Row(
-                    //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    //   children: [
-                    //     Text(
-                    //       'Question Navigation',
-                    //       style: AppTheme.subheadingStyle.copyWith(
-                    //         fontSize: 14,
-                    //         color: Colors.black,
-                    //         fontWeight: FontWeight.bold,
-                    //       ),
-                    //     ),
-                    //     Text(
-                    //       '${_currentIndex + 1} of ${widget.mcqs.length}',
-                    //       style: AppTheme.captionStyle.copyWith(
-                    //         fontSize: 12,
-                    //         color: Colors.black87,
-                    //       ),
-                    //     ),
-                    //   ],
-                    // ),
-                    // const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildNavButton(
-                            icon: Icons.arrow_back_ios,
-                            label: 'Previous',
-                            onPressed:
-                                _currentIndex > 0 ? _previousQuestion : null,
-                            color: Colors.indigoAccent,
-                          ),
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                color: Colors.white,
+                shadowColor: Colors.grey.withOpacity(0.3),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatItem(
+                          icon: Icons.quiz_outlined,
+                          label: 'Attempted',
+                          value:
+                              '${widget.mcqs.length - countUnansweredQuestions()}/$totalQuestions',
+                          color: Colors.indigoAccent,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildNavButton(
-                            icon: Icons.arrow_forward_ios,
-                            label: 'Next',
-                            onPressed: _currentIndex < widget.mcqs.length - 1
-                                ? _nextQuestion
-                                : null,
-                            color: Colors.indigoAccent,
-                          ),
+                      ),
+                      Expanded(
+                        child: _buildStatItem(
+                          icon: Icons.schedule_outlined,
+                          label: 'Time Left',
+                          value: _formatTime(_timeRemaining),
+                          color:
+                              _timeRemaining < 60 ? Colors.red : Colors.green,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildNavButton(
-                            icon: Icons.send,
-                            label: 'Submit',
-                            onPressed:
-                                _hasSubmitted ? null : _showSubmitConfirmation,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+
+            // Question Card
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                child: GestureDetector(
+                  onHorizontalDragEnd: _onSwipe,
+                  child: _buildQuestionCardCached(
+                      _currentIndex, widget.mcqs[_currentIndex]),
+                ),
+              ),
+            ),
+
+            // Navigation Controls
+            Container(
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                color: Colors.white,
+                shadowColor: Colors.grey.withOpacity(0.3),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildNavButton(
+                              icon: Icons.arrow_back_ios,
+                              label: 'Previous',
+                              onPressed:
+                                  _currentIndex > 0 ? _previousQuestion : null,
+                              color: Colors.indigoAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildNavButton(
+                              icon: Icons.arrow_forward_ios,
+                              label: 'Next',
+                              onPressed: _currentIndex < widget.mcqs.length - 1
+                                  ? _nextQuestion
+                                  : null,
+                              color: Colors.indigoAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildNavButton(
+                              icon: Icons.send,
+                              label: 'Submit',
+                              onPressed: _hasSubmitted
+                                  ? null
+                                  : _showSubmitConfirmation,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -592,7 +624,7 @@ class _TestTakingPageState extends State<TestTakingPage> {
         ),
         const SizedBox(width: 4),
         Text(
-          label + " : ",
+          "$label : ",
           style: AppTheme.captionStyle.copyWith(
             fontSize: 12,
             color: Colors.black87,
@@ -646,7 +678,11 @@ class _TestTakingPageState extends State<TestTakingPage> {
     );
   }
 
-  Widget _buildQuestionCard(int index, Map<String, dynamic> mcq) {
+  Widget _buildQuestionCardCached(int index, Map<String, dynamic> mcq) {
+    // Return cached widget if available
+    if (_questionCache.containsKey(index)) return _questionCache[index]!;
+
+    // Keep all your existing code exactly as it is
     final questionMap = mcq['question'] as Map<String, dynamic>? ?? {};
     final String questionText = questionMap['text'] ?? 'No question provided.';
     final String questionImage = questionMap['image'] ?? '';
@@ -694,7 +730,8 @@ class _TestTakingPageState extends State<TestTakingPage> {
       finalDText += '<br/><img src="$dImage" width=300 height=60/>';
     }
 
-    return Card(
+    // Build the widget exactly as you already have
+    final questionWidget = Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -705,7 +742,6 @@ class _TestTakingPageState extends State<TestTakingPage> {
         children: [
           Column(
             children: [
-              // Question Header
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -745,11 +781,10 @@ class _TestTakingPageState extends State<TestTakingPage> {
                                 ),
                               ),
                               TextSpan(
-                                text: "  " + originText,
-                                style: TextStyle(
+                                text: "  $originText",
+                                style: const TextStyle(
                                   fontSize: 10,
-                                  fontWeight: FontWeight
-                                      .bold, // Made grey text bold as requested
+                                  fontWeight: FontWeight.bold,
                                   color: Colors.grey,
                                 ),
                               ),
@@ -763,14 +798,8 @@ class _TestTakingPageState extends State<TestTakingPage> {
               ),
               // Question Content
               Expanded(
-                  child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(
-                  scrollbars: false, // Hide the scrollbar
-                  overscroll: false, // Optional: disable overscroll effect
-                ),
                 child: SingleChildScrollView(
                   child: TeXView(
-                    key: ValueKey("quiz_$index"),
                     child: TeXViewColumn(
                       children: [
                         TeXViewDocument(
@@ -788,32 +817,6 @@ class _TestTakingPageState extends State<TestTakingPage> {
                             _buildOption(index, "id_3", "C", finalCText),
                             _buildOption(index, "id_4", "D", finalDText),
                           ],
-                          selectedItemStyle: const TeXViewStyle(
-                            borderRadius: TeXViewBorderRadius.all(12),
-                            border: TeXViewBorder.all(
-                              TeXViewBorderDecoration(
-                                borderWidth: 2,
-                                borderColor:
-                                    Colors.blue, // Changed to blue as requested
-                              ),
-                            ),
-                            margin: TeXViewMargin.all(8),
-                            backgroundColor:
-                                Color(0xFFE3F2FD), // Light blue background
-                            padding: TeXViewPadding.all(16),
-                          ),
-                          normalItemStyle: const TeXViewStyle(
-                            margin: TeXViewMargin.all(8),
-                            borderRadius: TeXViewBorderRadius.all(12),
-                            border: TeXViewBorder.all(
-                              TeXViewBorderDecoration(
-                                borderWidth: 1,
-                                borderColor: Colors.grey,
-                              ),
-                            ),
-                            backgroundColor: Colors.white,
-                            padding: TeXViewPadding.all(16),
-                          ),
                           onTap: _hasSubmitted ? null : _selectAnswer,
                         ),
                       ],
@@ -824,20 +827,11 @@ class _TestTakingPageState extends State<TestTakingPage> {
                       borderRadius: TeXViewBorderRadius.all(0),
                       backgroundColor: Colors.transparent,
                     ),
-                    loadingWidgetBuilder: (context) => const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: CircularProgressIndicator(
-                          color: Colors.blue, // Changed to blue for consistency
-                        ),
-                      ),
-                    ),
                   ),
                 ),
-              )),
+              ),
             ],
           ),
-          // Review Bookmark
           Positioned(
             top: 2,
             right: 2,
@@ -857,10 +851,17 @@ class _TestTakingPageState extends State<TestTakingPage> {
         ],
       ),
     );
+
+    // Cache the widget
+    // _questionCache[index] = questionWidget;
+    return questionWidget;
   }
 
   TeXViewGroupItem _buildOption(
       int index, String id, String label, String content) {
+    final optionIndex = int.parse(id.split('_')[1]) - 1;
+    final isSelected = userAnswers[index] == optionIndex;
+
     return TeXViewGroupItem(
       rippleEffect: true,
       id: id,
@@ -868,6 +869,17 @@ class _TestTakingPageState extends State<TestTakingPage> {
         "<b>$label: </b>$content",
         style: TeXViewStyle(
           fontStyle: TeXViewFontStyle(fontSize: 14),
+          backgroundColor:
+              isSelected ? Colors.indigoAccent.withOpacity(0.1) : Colors.white,
+          borderRadius: const TeXViewBorderRadius.all(12),
+          border: TeXViewBorder.all(
+            TeXViewBorderDecoration(
+              borderWidth: isSelected ? 2 : 1,
+              borderColor: isSelected ? Colors.indigoAccent : Colors.grey,
+            ),
+          ),
+          margin: const TeXViewMargin.all(8),
+          padding: const TeXViewPadding.all(16),
         ),
       ),
     );

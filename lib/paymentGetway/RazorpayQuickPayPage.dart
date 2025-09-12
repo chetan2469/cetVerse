@@ -1,6 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RazorpayQuickPayPage extends StatefulWidget {
   const RazorpayQuickPayPage({
@@ -70,7 +70,7 @@ class _RazorpayQuickPayPageState extends State<RazorpayQuickPayPage>
   // [Keep your existing _featuresForPlan and _subscriptionForPlan methods]
   Map<String, dynamic> _featuresForPlan(String plan) {
     switch (plan) {
-      case 'Plus':
+      case 'Orbit':
         return {
           'mhtCetPyqsAccess': 'full',
           'boardPyqsAccess': true,
@@ -82,7 +82,7 @@ class _RazorpayQuickPayPageState extends State<RazorpayQuickPayPage>
           'performanceTracking': true,
           'priorityFeatureAccess': false,
         };
-      case 'Pro':
+      case 'Galaxy':
         return {
           'mhtCetPyqsAccess': 'full',
           'boardPyqsAccess': true,
@@ -94,7 +94,7 @@ class _RazorpayQuickPayPageState extends State<RazorpayQuickPayPage>
           'performanceTracking': true,
           'priorityFeatureAccess': true,
         };
-      case 'Starter':
+      case 'Nova':
       default:
         return {
           'mhtCetPyqsAccess': 'limited',
@@ -113,7 +113,7 @@ class _RazorpayQuickPayPageState extends State<RazorpayQuickPayPage>
   Map<String, dynamic> _subscriptionForPlan(String plan, num amountRupees) {
     final now = DateTime.now();
     DateTime? end;
-    if (plan == 'Plus' || plan == 'Pro') {
+    if (plan == 'Orbit' || plan == 'Galaxy') {
       end = DateTime(now.year + 1, now.month, now.day);
     }
     return {
@@ -128,11 +128,11 @@ class _RazorpayQuickPayPageState extends State<RazorpayQuickPayPage>
 
   Color get _planColor {
     switch (widget.planName.toLowerCase()) {
-      case 'starter':
+      case 'nova':
         return Colors.blue;
-      case 'plus':
+      case 'orbit':
         return Colors.purple;
-      case 'pro':
+      case 'galaxy':
         return Colors.orange;
       default:
         return Colors.blue;
@@ -141,11 +141,11 @@ class _RazorpayQuickPayPageState extends State<RazorpayQuickPayPage>
 
   IconData get _planIcon {
     switch (widget.planName.toLowerCase()) {
-      case 'starter':
+      case 'nova':
         return Icons.rocket_launch;
-      case 'plus':
+      case 'orbit':
         return Icons.star;
-      case 'pro':
+      case 'galaxy':
         return Icons.diamond;
       default:
         return Icons.workspace_premium;
@@ -154,20 +154,20 @@ class _RazorpayQuickPayPageState extends State<RazorpayQuickPayPage>
 
   List<String> get _planFeatures {
     switch (widget.planName.toLowerCase()) {
-      case 'starter':
+      case 'nova':
         return [
           '1 Mock Test per Subject',
           'Performance Tracking',
           'Limited PYQ Access'
         ];
-      case 'plus':
+      case 'orbit':
         return [
           '2 Mock Tests per Subject',
           'Full PYQ Access',
           'Chapter Notes',
           'Board PYQs'
         ];
-      case 'pro':
+      case 'galaxy':
         return [
           'Unlimited Mock Tests',
           'Full Mock Test Series',
@@ -440,7 +440,7 @@ class _RazorpayQuickPayPageState extends State<RazorpayQuickPayPage>
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (widget.planName != 'Starter') ...[
+                      if (widget.planName != 'Nova') ...[
                         const SizedBox(height: 8),
                         Text(
                           'Valid for 1 year',
@@ -480,34 +480,32 @@ class _RazorpayQuickPayPageState extends State<RazorpayQuickPayPage>
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ..._planFeatures
-                          .map((feature) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.check,
-                                        color: Colors.green,
-                                        size: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        feature,
-                                        style: theme.textTheme.bodyLarge,
-                                      ),
-                                    ),
-                                  ],
+                      ..._planFeatures.map((feature) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.check,
+                                    color: Colors.green,
+                                    size: 16,
+                                  ),
                                 ),
-                              ))
-                          .toList(),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    feature,
+                                    style: theme.textTheme.bodyLarge,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
                     ],
                   ),
                 ),

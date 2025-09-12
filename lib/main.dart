@@ -1,10 +1,9 @@
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/core/config/firebase_options.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_tex/flutter_tex.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'screens/flash_screen.dart';
 
 void main() async {

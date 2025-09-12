@@ -1,10 +1,10 @@
-import 'package:cet_verse/features/courses/pyq/PYQTestQuestionList.dart';
-import 'package:cet_verse/features/courses/pyq/tests/test_page.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cet_verse/ui/theme/constants.dart';
-import 'package:provider/provider.dart';
 import 'package:cet_verse/core/auth/AuthProvider.dart';
+import 'package:cet_verse/features/courses/pyq/PYQTestQuestionList.dart';
+import 'package:cet_verse/features/courses/pyq/tests/new_test_view/test_screen.dart';
+import 'package:cet_verse/ui/theme/constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 class PYQTestNameList extends StatefulWidget {
@@ -106,7 +106,7 @@ class _PYQTestNameListState extends State<PYQTestNameList> {
             var test = entry.value;
             final testName = test['testName'];
             final isCurrentTest = testName == currentTest;
-            final isStarterPlan = authProvider.getPlanType == 'Starter';
+            final isStarterPlan = authProvider.getPlanType == 'Nova';
             bool isDisabled = !isCurrentTest && isStarterPlan;
 
             return Padding(
@@ -362,64 +362,67 @@ class _PYQTestNameListState extends State<PYQTestNameList> {
   }
 
   Widget _buildEmptyCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      color: Colors.white,
-      shadowColor: Colors.grey.withOpacity(0.3),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            const Icon(
-              Icons.info_outline,
-              color: Colors.grey,
-              size: 56,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No tests available',
-              style: AppTheme.subheadingStyle.copyWith(
-                fontSize: 16,
+    return SizedBox(
+      width: MediaQuery.widthOf(context),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        color: Colors.white,
+        shadowColor: Colors.grey.withOpacity(0.3),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              const Icon(
+                Icons.info_outline,
                 color: Colors.grey,
-                fontWeight: FontWeight.bold,
+                size: 56,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No tests found for ${widget.year} (${widget.pyqType})',
-              style: AppTheme.captionStyle.copyWith(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => setState(() {}),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigoAccent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 4,
-              ),
-              child: const Text(
-                'Retry',
-                style: TextStyle(
+              const SizedBox(height: 16),
+              Text(
+                'No tests available',
+                style: AppTheme.subheadingStyle.copyWith(
                   fontSize: 16,
+                  color: Colors.grey,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'No tests found for ${widget.year} (${widget.pyqType})',
+                style: AppTheme.captionStyle.copyWith(
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => setState(() {}),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigoAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
+                ),
+                child: const Text(
+                  'Retry',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -434,7 +437,7 @@ class _PYQTestNameListState extends State<PYQTestNameList> {
     required bool isFirstItem,
     required AuthProvider authProvider,
   }) {
-    final isStarterPlan = authProvider.getPlanType == 'Starter';
+    final isStarterPlan = authProvider.getPlanType == 'Nova';
     final isAdmin = authProvider.userType == 'Admin';
 
     return Card(
@@ -455,7 +458,7 @@ class _PYQTestNameListState extends State<PYQTestNameList> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => Test(
+                      builder: (_) => TestWrapper(
                         year: widget.year,
                         pyqType: widget.pyqType,
                         docId: docId,

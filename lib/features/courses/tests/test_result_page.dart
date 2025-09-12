@@ -1,7 +1,7 @@
 import 'package:cet_verse/main.dart';
+import 'package:cet_verse/ui/theme/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tex/flutter_tex.dart';
-import 'package:cet_verse/ui/theme/constants.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart'
     as webview_android;
@@ -155,6 +155,9 @@ class _TestResultPageState extends State<TestResultPage> {
   }
 
   Widget _buildQuestionDetails(int index) {
+    if (_renderedCache.containsKey(index)) {
+      return _renderedCache[index]!;
+    }
     if (!_isWebViewInitialized) {
       return const Center(
         child: CircularProgressIndicator(),
@@ -295,12 +298,12 @@ class _TestResultPageState extends State<TestResultPage> {
                     borderRadius: TeXViewBorderRadius.all(8),
                     backgroundColor: Colors.white,
                   ),
-                  loadingWidgetBuilder: (context) => const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.blue,
-                      strokeWidth: 2,
-                    ),
-                  ),
+                  // loadingWidgetBuilder: (context) => const Center(
+                  //   child: CircularProgressIndicator(
+                  //     color: Colors.blue,
+                  //     strokeWidth: 2,
+                  //   ),
+                  // ),
                   onRenderFinished: (height) {
                     setState(() {
                       _isQuestionRendered = true;
@@ -309,16 +312,16 @@ class _TestResultPageState extends State<TestResultPage> {
                 ),
               ),
             ),
-            if (!_isQuestionRendered)
-              Container(
-                color: Colors.black.withOpacity(0.1),
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.blue,
-                    strokeWidth: 2,
-                  ),
-                ),
-              ),
+            // if (!_isQuestionRendered)
+            //   Container(
+            //     color: Colors.black.withOpacity(0.1),
+            //     child: const Center(
+            //       child: CircularProgressIndicator(
+            //         color: Colors.blue,
+            //         strokeWidth: 2,
+            //       ),
+            //     ),
+            //   ),
             Positioned(
               right: 12,
               top: 12,

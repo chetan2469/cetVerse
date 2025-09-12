@@ -1,9 +1,9 @@
+import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/features/courses/chapters.dart';
 import 'package:cet_verse/features/courses/notes/notes_page.dart';
 import 'package:cet_verse/screens/pricing_page.dart';
-import 'package:flutter/material.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
-import 'package:cet_verse/core/auth/AuthProvider.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class StudyType extends StatefulWidget {
@@ -161,7 +161,8 @@ class _StudyTypeState extends State<StudyType> {
           isFirstItem: true,
           onTap: () {
             if (!testsAllowed) {
-              _upsell(context, 'Mock tests are available on Plus/Pro plans');
+              _upsell(
+                  context, 'Mock tests are available on Orbit/Galaxy plans');
               return;
             }
             Navigator.push(
@@ -181,7 +182,7 @@ class _StudyTypeState extends State<StudyType> {
           title: "Study Notes",
           description:
               "Access study materials, summaries, and important formula sheets.",
-          footer: notesAllowed ? 'Available' : 'Plus/Pro required',
+          footer: notesAllowed ? 'Available' : 'Orbit/Galaxy required',
           isLocked: false,
           isFirstItem: false,
           onTap: () {
@@ -192,7 +193,7 @@ class _StudyTypeState extends State<StudyType> {
               );
             }
             if (!notesAllowed) {
-              _upsell(context, 'Notes are available on Plus/Pro plans');
+              _upsell(context, 'Notes are available on Orbit/Galaxy plans');
               return;
             }
             Navigator.push(

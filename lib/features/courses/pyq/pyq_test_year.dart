@@ -1,10 +1,10 @@
+import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/features/courses/pyq/PYQTestNameList.dart';
 import 'package:cet_verse/screens/pricing_page.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:shimmer/shimmer.dart';
 
 class PYQTestYear extends StatelessWidget {
@@ -92,7 +92,7 @@ class PYQTestYear extends StatelessWidget {
         return Column(
           children: years.map((year) {
             final isCurrentYear = year == currentYear;
-            final isStarterPlan = authProvider.getPlanType == 'Starter';
+            final isStarterPlan = authProvider.getPlanType == 'Nova';
             final isAdmin = authProvider.userType == 'Admin';
             bool isDisabled = !isCurrentYear && isStarterPlan && !isAdmin;
 

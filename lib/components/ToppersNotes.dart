@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/features/courses/notes/pdf_viewer_page.dart';
 import 'package:cet_verse/screens/pricing_page.dart';
@@ -21,7 +22,7 @@ class _ToppersNotesState extends State<ToppersNotes> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isAdmin = (auth.getUserType ?? '').toLowerCase() == 'admin';
-    final canDownload = auth.topperNotesDownload; // Plus/Pro
+    final canDownload = auth.topperNotesDownload; // Orbit/Galaxy
 
     return Scaffold(
       appBar: AppBar(
@@ -95,7 +96,7 @@ class _ToppersNotesState extends State<ToppersNotes> {
                     subtitle: Text(
                       canDownload
                           ? 'Tap to view • Download available'
-                          : 'Tap to view • Download locked (Plus/Pro)',
+                          : 'Tap to view • Download locked (Orbit/Galaxy)',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     leading: Container(
@@ -126,7 +127,7 @@ class _ToppersNotesState extends State<ToppersNotes> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                     content: Text(
-                                        'Topper notes download is available on Plus/Pro')),
+                                        'Topper notes download is available on Orbit/Galaxy')),
                               );
                               Navigator.push(
                                 context,

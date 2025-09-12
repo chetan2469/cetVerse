@@ -267,7 +267,7 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildProfileHeader(UserModel user, AuthProvider auth) {
-    final plan = auth.getPlanType ?? 'Starter';
+    final plan = auth.getPlanType ?? 'Nova';
     final status = auth.subscriptionStatus ?? 'inactive';
 
     return Container(
@@ -523,8 +523,8 @@ class _ProfilePageState extends State<ProfilePage>
           _buildInfoTile(
               Icons.workspace_premium_rounded,
               'Plan',
-              auth.getPlanType ?? 'Starter',
-              _getPlanColor(auth.getPlanType ?? 'Starter')),
+              auth.getPlanType ?? 'Nova',
+              _getPlanColor(auth.getPlanType ?? 'Nova')),
           _buildInfoTile(
               Icons.toggle_on_rounded,
               'Status',
@@ -1232,9 +1232,9 @@ class _ProfilePageState extends State<ProfilePage>
   // Helper methods
   Color _getPlanColor(String plan) {
     switch (plan.toLowerCase()) {
-      case 'pro':
+      case 'galaxy':
         return Colors.purple;
-      case 'plus':
+      case 'orbit':
         return primaryBlue;
       default:
         return Colors.grey;
@@ -1247,9 +1247,9 @@ class _ProfilePageState extends State<ProfilePage>
 
   IconData _getPlanIcon(String plan) {
     switch (plan.toLowerCase()) {
-      case 'pro':
+      case 'galaxy':
         return Icons.diamond_rounded;
-      case 'plus':
+      case 'orbit':
         return Icons.star_rounded;
       default:
         return Icons.account_circle_rounded;

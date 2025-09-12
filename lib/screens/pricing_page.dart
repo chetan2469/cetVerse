@@ -1,10 +1,10 @@
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/paymentGetway/RazorpayQuickPayPage.dart';
 import 'package:cet_verse/screens/NeedHelp.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class PricingPage extends StatefulWidget {
   const PricingPage({super.key});
@@ -52,11 +52,11 @@ class _PricingPageState extends State<PricingPage>
   // --- helpers ---
   int _levelFor(String? plan) {
     switch (plan) {
-      case 'Plus':
+      case 'Orbit':
         return 1;
-      case 'Pro':
+      case 'Galaxy':
         return 2;
-      case 'Starter':
+      case 'Nova':
       default:
         return 0;
     }
@@ -73,7 +73,7 @@ class _PricingPageState extends State<PricingPage>
       await FirebaseFirestore.instance.collection('users').doc(phone).set(
         {
           'subscription': {
-            'planType': 'Starter',
+            'planType': 'Nova',
             'status': 'active',
             'amountPaid': 0,
             'paymentMethod': 'none',
@@ -95,7 +95,7 @@ class _PricingPageState extends State<PricingPage>
         SetOptions(merge: true),
       );
       await auth.fetchUserData(phone);
-      _showSuccessMessage('Starter plan activated successfully!');
+      _showSuccessMessage('Nova plan activated successfully!');
     } catch (e) {
       _showErrorMessage('Failed to activate plan: $e');
     }
@@ -135,7 +135,7 @@ class _PricingPageState extends State<PricingPage>
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final currentPlan = auth.getPlanType ?? 'Starter';
+    final currentPlan = auth.getPlanType ?? 'Nova';
     final currentLevel = _levelFor(currentPlan);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -285,7 +285,7 @@ class _PricingPageState extends State<PricingPage>
 
   Widget _buildPricingCards(
       BuildContext context, int currentLevel, double screenWidth) {
-    final plans = ['Starter', 'Plus', 'Pro'];
+    final plans = ['Nova', 'Orbit', 'Galaxy'];
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
@@ -308,7 +308,7 @@ class _PricingPageState extends State<PricingPage>
     final level = _levelFor(planType);
     final isCurrent = currentLevel == level;
     final isDisabled = currentLevel > level;
-    final isPopular = planType == 'Pro';
+    final isPopular = planType == 'Galaxy';
 
     return Container(
       decoration: BoxDecoration(
@@ -378,12 +378,12 @@ class _PricingPageState extends State<PricingPage>
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    colors: planType == 'Pro'
+                                    colors: planType == 'Galaxy'
                                         ? [
                                             Colors.purple[400]!,
                                             Colors.purple[600]!
                                           ]
-                                        : planType == 'Plus'
+                                        : planType == 'Orbit'
                                             ? [
                                                 Colors.blue[400]!,
                                                 Colors.blue[600]!
@@ -396,9 +396,9 @@ class _PricingPageState extends State<PricingPage>
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
-                                  planType == 'Pro'
+                                  planType == 'Galaxy'
                                       ? Icons.diamond
-                                      : planType == 'Plus'
+                                      : planType == 'Orbit'
                                           ? Icons.star
                                           : Icons.favorite,
                                   color: Colors.white,
@@ -437,9 +437,9 @@ class _PricingPageState extends State<PricingPage>
                                 style: GoogleFonts.poppins(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
-                                  color: planType == 'Pro'
+                                  color: planType == 'Galaxy'
                                       ? Colors.purple[600]
-                                      : planType == 'Plus'
+                                      : planType == 'Orbit'
                                           ? Colors.blue[600]
                                           : Colors.green[600],
                                 ),
@@ -560,22 +560,22 @@ class _PricingPageState extends State<PricingPage>
                     onPressed: (isCurrent || isDisabled)
                         ? null
                         : () {
-                            if (planType == 'Starter') {
+                            if (planType == 'Nova') {
                               _activateFreePlan(context);
                             } else {
                               _startPaidPlan(
                                 context,
                                 planCode: planType,
-                                rupees: planType == 'Plus' ? 129 : 149,
+                                rupees: planType == 'Orbit' ? 399 : 449,
                               );
                             }
                           },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isCurrent || isDisabled
                           ? Colors.grey[300]
-                          : planType == 'Pro'
+                          : planType == 'Galaxy'
                               ? Colors.purple[600]
-                              : planType == 'Plus'
+                              : planType == 'Orbit'
                                   ? Colors.blue[600]
                                   : Colors.green[600],
                       foregroundColor: Colors.white,
@@ -589,7 +589,7 @@ class _PricingPageState extends State<PricingPage>
                       children: [
                         if (!isCurrent && !isDisabled)
                           Icon(
-                            planType == 'Starter'
+                            planType == 'Nova'
                                 ? Icons.rocket_launch
                                 : Icons.upgrade,
                             size: 20,
@@ -600,7 +600,7 @@ class _PricingPageState extends State<PricingPage>
                               ? 'Current Plan'
                               : isDisabled
                                   ? 'Downgrade N/A'
-                                  : planType == 'Starter'
+                                  : planType == 'Nova'
                                       ? 'Get Started Free'
                                       : 'Upgrade Now',
                           style: GoogleFonts.poppins(
@@ -790,9 +790,9 @@ class _PricingPageState extends State<PricingPage>
 
   Map<String, dynamic> _getPlanData(String planType) {
     switch (planType) {
-      case 'Starter':
+      case 'Nova':
         return {
-          'name': 'Starter Plan',
+          'name': 'Nova Plan',
           'subtitle': 'Perfect for beginners',
           'price': 'FREE',
           'period': null,
@@ -805,11 +805,11 @@ class _PricingPageState extends State<PricingPage>
             {'text': 'Chapter-wise notes download', 'available': false},
           ]
         };
-      case 'Plus':
+      case 'Orbit':
         return {
-          'name': 'Plus Plan',
+          'name': 'Orbit Plan',
           'subtitle': 'Most comprehensive preparation',
-          'price': '₹129',
+          'price': '₹399',
           'period': '/year',
           'features': [
             {'text': 'Unlimited MHT CET PYQs', 'available': true},
@@ -820,14 +820,14 @@ class _PricingPageState extends State<PricingPage>
             {'text': 'Full mock test series', 'available': false},
           ]
         };
-      case 'Pro':
+      case 'Galaxy':
         return {
-          'name': 'Pro Plan',
+          'name': 'Galaxy Plan',
           'subtitle': 'Ultimate CET preparation',
-          'price': '₹149',
+          'price': '₹449',
           'period': '/year',
           'features': [
-            {'text': 'Everything in Plus plan', 'available': true},
+            {'text': 'Everything in Orbit plan', 'available': true},
             {'text': 'Complete mock test series', 'available': true},
             {'text': 'Full topper profiles access', 'available': true},
             {'text': 'Priority feature access', 'available': true},

@@ -47,7 +47,7 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage>
 
   Future<void> _launchEmail() async {
     final uri =
-        Uri.parse('mailto:chedotech@gmail.com?subject=Privacy Policy Inquiry');
+        Uri.parse('mailto:cetverse@gmail.com?subject=Privacy Policy Inquiry');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
@@ -444,7 +444,7 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage>
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ],
               ),
@@ -512,21 +512,21 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage>
             Column(
               children: [
                 _buildPlanCard(
-                    'Starter Plan',
+                    'Nova Plan',
                     '₹0',
                     'Limited MHT CET PYQs, 2 Free Mock Tests, Browse Topper Profiles (read-only)',
                     Colors.green),
                 const SizedBox(height: 12),
                 _buildPlanCard(
-                    'Plus Plan',
-                    '₹129/year',
+                    'Orbit Plan',
+                    '₹399/year',
                     'Full MHT CET PYQs, Chapter-wise Notes, Topper Notes & Profiles, Full Mock Tests, Performance Tracking',
                     Colors.blue),
                 const SizedBox(height: 12),
                 _buildPlanCard(
-                    'Pro Plan',
-                    '₹149/year',
-                    'Everything in Plus, Solved Board PYQs, Priority access to new features',
+                    'Galaxy Plan',
+                    '₹449/year',
+                    'Everything in Orbit, Solved Board PYQs, Priority access to new features',
                     Colors.purple),
               ],
             ),
