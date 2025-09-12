@@ -24,15 +24,10 @@ Future<bool?> showBackConfirmation2(BuildContext context) async {
           ],
         ),
         content: const Text(
-          'Are you sure you want to go back? Your progress will be lost.',
+          'Are you sure you want to go back? will be lost.',
           style: TextStyle(fontSize: 14),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-          ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(

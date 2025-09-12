@@ -391,7 +391,7 @@ mixin TestDialogs<T extends StatefulWidget> on State<T> {
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(context).pop(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blueGrey,
                 foregroundColor: Colors.white,
