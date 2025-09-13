@@ -1,11 +1,10 @@
-import 'package:cet_verse/ui/theme/constants.dart';
+import 'package:cet_verse/core/auth/AuthProvider.dart';
+import 'package:cet_verse/ui/components/recent_tests.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:provider/provider.dart';
-import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 class ProgressPage extends StatefulWidget {
@@ -21,6 +20,15 @@ class _ProgressPageState extends State<ProgressPage>
   double averageScore = 0.0;
   double overallProgress = 0.0;
   String level = "Beginner";
+
+  //new stats
+  int totalScore = 0;
+  int totalAttempted = 0;
+  int totalWrong = 0;
+  int totalUnattempted = 0;
+  double totalAccuracySum = 0.0;
+  double rankScore = 0.0;
+  int currentRank = 0;
 
   Map<String, Map<String, dynamic>> subjectAnalytics = {
     'Physics': {
@@ -112,6 +120,7 @@ class _ProgressPageState extends State<ProgressPage>
       _loadOverallProgress(userPhoneNumber);
       _loadSubjectProgress(userPhoneNumber);
       _loadChartsData(userPhoneNumber);
+      _fetchCurrentStat(userPhoneNumber);
       _loadRecentTests(userPhoneNumber);
     } catch (e) {
       setState(() {
@@ -300,6 +309,7 @@ class _ProgressPageState extends State<ProgressPage>
             'date': DateFormat('MMM dd, yyyy').format(timestamp.toDate()),
             'timestamp': timestamp.toDate(),
             'type': 'mock',
+            'accuracy': data['accuracy'],
           });
         }
       }
@@ -314,6 +324,7 @@ class _ProgressPageState extends State<ProgressPage>
             'date': DateFormat('MMM dd, yyyy').format(timestamp.toDate()),
             'timestamp': timestamp.toDate(),
             'type': 'pyq',
+            'accuracy': data['accuracy'],
           });
         }
       }
@@ -325,6 +336,46 @@ class _ProgressPageState extends State<ProgressPage>
     } catch (e) {
       setState(() => _isLoadingRecent = false);
     }
+  }
+
+  Future<void> _fetchCurrentStat(String userPhoneNumber) async {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userPhoneNumber)
+        .get();
+
+    if (!userDoc.exists) return;
+
+    final data = userDoc.data();
+    if (data == null || !data.containsKey('stats')) return;
+
+    final stats = Map<String, dynamic>.from(data['stats']);
+
+    totalScore = (stats['totalScore'] ?? 0) as int;
+    totalAttempted = (stats['totalAttempted'] ?? 0) as int;
+    totalWrong = (stats['totalWrong'] ?? 0) as int;
+    totalUnattempted = (stats['totalUnattempted'] ?? 0) as int;
+    totalAccuracySum = (stats['totalAccuracySum'] ?? 0.0).toDouble();
+    rankScore = (stats['rankScore'] ?? 0.0).toDouble();
+
+    final leaderboard = FirebaseFirestore.instance.collection('leaderboard');
+
+    // Fetch ordered leaderboard
+    final snapshot =
+        await leaderboard.orderBy('rankScore', descending: true).get();
+
+    // Find index of current user
+    final docs = snapshot.docs;
+    final index = docs.indexWhere((doc) => doc.id == userPhoneNumber);
+
+    if (index != -1) {
+      currentRank = index + 1; // because index starts from 0
+    } else {
+      currentRank = -1; // not found
+    }
+    print(index.toString());
+
+    setState(() {});
   }
 
   void _calculateSubjectAnalytics(
@@ -521,6 +572,78 @@ class _ProgressPageState extends State<ProgressPage>
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ],
@@ -911,11 +1034,39 @@ class _ProgressPageState extends State<ProgressPage>
           const SizedBox(height: 20),
           Row(
             children: [
+              _buildStatItem('Current Rank', currentRank.toString(),
+                  Icons.workspace_premium),
+              const SizedBox(width: 20),
+              _buildStatItem(
+                  'Rank Score', '${(rankScore)}', Icons.emoji_events),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
               _buildStatItem(
                   'Tests Taken', totalTestsTaken.toString(), Icons.quiz),
               const SizedBox(width: 20),
               _buildStatItem('Avg. Score',
                   '${averageScore.toStringAsFixed(1)}%', Icons.grade),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildStatItem(
+                  'Attempted', totalAttempted.toString(), Icons.quiz),
+              const SizedBox(width: 20),
+              _buildStatItem(
+                  'Unattempted', totalUnattempted.toString(), Icons.quiz),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildStatItem('Correct Ans', totalScore.toString(), Icons.quiz),
+              const SizedBox(width: 20),
+              _buildStatItem('Wrong Ans', totalWrong.toString(), Icons.quiz),
             ],
           ),
         ],
@@ -1199,7 +1350,10 @@ class _ProgressPageState extends State<ProgressPage>
               const Spacer(),
               TextButton.icon(
                 onPressed: () {
-                  // Navigate to full history
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RecentTestsPage()),
+                  );
                 },
                 icon: const Icon(Icons.arrow_forward, size: 16),
                 label: const Text('View All'),
@@ -1288,7 +1442,7 @@ class _ProgressPageState extends State<ProgressPage>
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          '${test['score'].toStringAsFixed(1)}%',
+                          '${test['accuracy']}%',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,

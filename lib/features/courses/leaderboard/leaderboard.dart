@@ -105,7 +105,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
           stream: FirebaseFirestore.instance
               .collection('leaderboard')
               .orderBy('rankScore', descending: true)
-              .limit(50)
+              // .limit(50)
               .snapshots(),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
@@ -396,7 +396,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
-                                              "${(docs[myIndex]['rankScore'] as num).toDouble() * 10 ~/ 1} Points",
+                                              // "${(docs[myIndex]['rankScore'] as num).toDouble() * 10 ~/ 1} Points",
+                                              "${(docs[myIndex]['rankScore'] as num).toDouble()} Points",
                                               style: TextStyle(
                                                 color: Colors.white
                                                     .withOpacity(0.8),
@@ -569,7 +570,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                                                       ),
                                                     ),
                                                     Text(
-                                                      "${(score * 10).toStringAsFixed(0)} points",
+                                                      // "${(score * 10).toStringAsFixed(0)} points",
+                                                      "${(score)} points",
                                                       style: TextStyle(
                                                         color: Colors.white
                                                             .withOpacity(0.7),
@@ -636,7 +638,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       score = double.tryParse(rawScore.toString()) ?? 0.0;
     }
 
-    final scoreDisplay = (score * 10).toStringAsFixed(0);
+    // final scoreDisplay = (score * 10).toStringAsFixed(0);
+    final scoreDisplay = (score);
     final podiumColors = _getPodiumColors(rank);
 
     return Expanded(

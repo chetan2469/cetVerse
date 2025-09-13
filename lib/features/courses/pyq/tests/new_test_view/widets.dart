@@ -5,44 +5,94 @@ import 'package:cet_verse/features/courses/pyq/tests/new_test_view/test_provider
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-Future<bool?> showBackConfirmation2(BuildContext context) async {
-  return showDialog<bool>(
+Future<bool?> showExitDialog(BuildContext context) {
+  return showGeneralDialog<bool>(
     context: context,
     barrierDismissible: false,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Row(
-          children: [
-            Icon(Icons.help_outline, color: Colors.blueGrey, size: 20),
-            const SizedBox(width: 8),
-            const Text(
-              'Go Back?',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
+    barrierLabel: '',
+    barrierColor: Colors.black54,
+    transitionDuration: const Duration(milliseconds: 300),
+    pageBuilder: (ctx, animation, secondaryAnimation) => Container(),
+    transitionBuilder: (ctx, animation, secondaryAnimation, child) {
+      return ScaleTransition(
+        scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
         ),
-        content: const Text(
-          'Are you sure you want to go back? will be lost.',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blueGrey,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: const Text(
-              'Go Back',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        child: FadeTransition(
+          opacity: animation,
+          child: AlertDialog(
+            backgroundColor: Colors.white,
+            elevation: 24,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            contentPadding: const EdgeInsets.all(24),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.orange.shade100, Colors.red.shade100],
+                    ),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: Icon(Icons.warning_amber_rounded,
+                      color: Colors.red.shade600, size: 32),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Hold on!',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Are you sure you want to leave? Your progress might not be saved.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Cancel',
+                            style: TextStyle(fontWeight: FontWeight.w500)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red.shade500,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Leave',
+                            style: TextStyle(fontWeight: FontWeight.w500)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       );
     },
   );

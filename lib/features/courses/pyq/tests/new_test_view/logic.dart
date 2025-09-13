@@ -1,9 +1,9 @@
 import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/courses/TimerController.dart';
+import 'package:cet_verse/features/courses/pyq/tests/components/common_test_add_function.dart.dart';
 import 'package:cet_verse/features/courses/pyq/tests/new_test_view/test_provider.dart';
 import 'package:cet_verse/features/courses/pyq/tests/new_test_view/widets.dart';
 import 'package:cet_verse/features/courses/tests/test_result_page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -286,6 +286,163 @@ void showSubmitConfirmation(BuildContext context, TestProvider provider,
   );
 }
 
+// void _submitTest(TestProvider provider, TimerController timerController,
+//     BuildContext context) async {
+//   if (provider.hasSubmitted) return;
+
+//   // Mark as submitted
+//   provider.submitTest();
+//   timerController.stop();
+
+//   int totalScore = 0;
+//   int correctCount = 0;
+//   int unansweredCount = 0;
+//   double currentRankScore = 0.0;
+
+//   for (int i = 0; i < provider.mcqs.length; i++) {
+//     final mcq = provider.mcqs[i];
+//     final subject = mcq['subject'] as String?;
+
+//     if (provider.userAnswers[i] == -1) {
+//       unansweredCount++;
+//       continue;
+//     }
+
+//     final correctIndex =
+//         provider.answerToIndex(mcq['answer'] as String? ?? "A");
+//     if (provider.userAnswers[i] == correctIndex) {
+//       correctCount++;
+//       if (provider.pyqType.toLowerCase() == 'pcm' && subject == 'Maths') {
+//         totalScore += 2;
+//       } else {
+//         totalScore += 1;
+//       }
+//     }
+//   }
+
+//   final totalQuestions = provider.mcqs.length;
+//   final attemptedCount = totalQuestions - unansweredCount;
+//   final wrongCount = attemptedCount - correctCount;
+//   final accuracy = attemptedCount > 0
+//       ? (correctCount / attemptedCount * 100).toStringAsFixed(1)
+//       : '0.0';
+//   final timeLeft = timerController.formatTime(timerController.timeRemaining);
+
+//   // Show loading dialog while saving to Firebase
+//   showDialog(
+//     context: context,
+//     barrierDismissible: false,
+//     builder: (_) => const Center(
+//       child: CircularProgressIndicator(),
+//     ),
+//   );
+
+//   // Save result to Firebase
+//   try {
+//     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+//     final userPhoneNumber = authProvider.userPhoneNumber;
+//     if (userPhoneNumber != null) {
+//       // 1. Save history
+//       await FirebaseFirestore.instance
+//           .collection('users')
+//           .doc(userPhoneNumber)
+//           .collection('pyqHistory')
+//           .add({
+//         'year': provider.year,
+//         'pyqType': provider.pyqType,
+//         'accuracy': accuracy,
+//         'correct': correctCount,
+//         'score': totalScore,
+//         'timeleft': timeLeft,
+//         'timestamp': FieldValue.serverTimestamp(),
+//         'attempted': attemptedCount, //new
+//         'unattempted': unansweredCount,
+//         'wrong': wrongCount,
+//         'totalQuestion': totalQuestions, //new
+//       });
+
+//       // 2. Fetch user info
+//       final userDoc = await FirebaseFirestore.instance
+//           .collection('users')
+//           .doc(userPhoneNumber)
+//           .get();
+
+//       final data = userDoc.data() ?? {};
+//       final stats = Map<String, dynamic>.from(data['stats'] ?? {});
+
+//       final oldRankScore = (stats['rankScore'] ?? 0.0).toDouble();
+//       final oldAttempts = (stats['totalAttempted'] ?? 0).toDouble();
+//       final oldTotalScore = (stats['totalScore'] ?? 0).toInt();
+//       final oldTotalWrong = (stats['totalWrong'] ?? 0).toInt();
+//       final oldAccuracySum = (stats['totalAccuracySum'] ?? 0.0).toDouble();
+//       final oldTests = (stats['totalTests'] ?? 0).toInt();
+
+//       // 3. Calculate THIS test’s rank score
+//       final testRankScore = calculateRankScore(
+//         marks: correctCount,
+//         totalQ: totalQuestions,
+//         attemptedQ: attemptedCount,
+//       );
+
+//       // ✅ Incremental rank score
+//       final newRankScore = oldRankScore + testRankScore;
+//       final formattedRankScore = double.parse(newRankScore.toStringAsFixed(1));
+//       currentRankScore = formattedRankScore;
+
+//       // 4. Build new stats map
+//       final updatedStats = {
+//         'totalScore': oldTotalScore + correctCount,
+//         'totalWrong': oldTotalWrong + wrongCount,
+//         'totalAttempted': oldAttempts.toInt() + attemptedCount,
+//         'totalAccuracySum': oldAccuracySum + double.parse(accuracy),
+//         'totalTests': oldTests + 1,
+//         'rankScore': currentRankScore,
+//         'lastUpdated': FieldValue.serverTimestamp(),
+//       };
+
+//       // 5. Update user stats (replace whole map)
+//       await FirebaseFirestore.instance
+//           .collection('users')
+//           .doc(userPhoneNumber)
+//           .update({'stats': updatedStats});
+
+//       // 6. Update leaderboard entry
+//       await FirebaseFirestore.instance
+//           .collection('leaderboard')
+//           .doc(userPhoneNumber)
+//           .set({
+//         if (data['name'] != null) 'name': data['name'],
+//         if (data['city'] != null) 'city': data['city'],
+//         'rankScore': currentRankScore,
+//         'lastUpdated': FieldValue.serverTimestamp(),
+//         // }, SetOptions(merge: true));
+//       });
+//     }
+//   } catch (e) {
+//     // Handle Firebase errors if needed
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text('Failed to submit test: $e')),
+//     );
+//   } finally {
+//     Navigator.pop(context); // Close loading dialog
+//   }
+
+//   // Navigate to result page
+//   Navigator.pushReplacement(
+//     context,
+//     MaterialPageRoute(
+//       builder: (_) => TestResultPage(
+//         mcqs: provider.mcqs,
+//         userAnswers: provider.userAnswers,
+//         correctCount: correctCount,
+//         unansweredCount: unansweredCount,
+//         timeTaken: timeLeft,
+//         currentRankScorePoints: currentRankScore,
+//       ),
+//     ),
+//   );
+// }
+
 void _submitTest(TestProvider provider, TimerController timerController,
     BuildContext context) async {
   if (provider.hasSubmitted) return;
@@ -297,6 +454,7 @@ void _submitTest(TestProvider provider, TimerController timerController,
   int totalScore = 0;
   int correctCount = 0;
   int unansweredCount = 0;
+  double currentRankScore = 0.0;
 
   for (int i = 0; i < provider.mcqs.length; i++) {
     final mcq = provider.mcqs[i];
@@ -312,7 +470,7 @@ void _submitTest(TestProvider provider, TimerController timerController,
     if (provider.userAnswers[i] == correctIndex) {
       correctCount++;
       if (provider.pyqType.toLowerCase() == 'pcm' && subject == 'Maths') {
-        totalScore += 2;
+        totalScore += 2; // weighted marks for PCM Maths
       } else {
         totalScore += 1;
       }
@@ -322,120 +480,41 @@ void _submitTest(TestProvider provider, TimerController timerController,
   final totalQuestions = provider.mcqs.length;
   final attemptedCount = totalQuestions - unansweredCount;
   final wrongCount = attemptedCount - correctCount;
+
   final accuracy = attemptedCount > 0
-      ? (correctCount / attemptedCount * 100).toStringAsFixed(6)
+      ? (correctCount / attemptedCount * 100).toStringAsFixed(1)
       : '0.0';
+
   final timeLeft = timerController.formatTime(timerController.timeRemaining);
 
-  // Show loading dialog while saving to Firebase
+  // Show loading dialog
   showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (_) => const Center(
-      child: CircularProgressIndicator(),
-    ),
+    builder: (_) => const Center(child: CircularProgressIndicator()),
   );
 
-  // Save result to Firebase
   try {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final userPhoneNumber = authProvider.userPhoneNumber;
+
     if (userPhoneNumber != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userPhoneNumber)
-          .collection('pyqHistory')
-          .add({
-        'year': provider.year,
-        'pyqType': provider.pyqType,
-        'accuracy': accuracy,
-        'correct': correctCount,
-        'score': totalScore,
-        'timeleft': timeLeft,
-        'timestamp': FieldValue.serverTimestamp(),
-        'attempted': attemptedCount, //new
-        'unattempted': unansweredCount,
-        'wrong': wrongCount,
-        'totalQuestion': totalQuestions, //new
-      });
-
-      //   await FirebaseFirestore.instance
-      //       .collection('users')
-      //       .doc(userPhoneNumber)
-      //       .update({
-      //     'stats.totalTestMark': FieldValue.increment(totalQuestions),
-      //     'stats.totalScore': FieldValue.increment(correctCount),
-      //     'stats.totalWrong': FieldValue.increment(wrongCount),
-      //     'stats.totalAttempted': FieldValue.increment(attemptedCount),
-      //     'stats.totalUnattempted': FieldValue.increment(unansweredCount),
-      //     'stats.totalAccuracy': FieldValue.increment(double.parse(accuracy)),
-      //     'stats.totalTests': FieldValue.increment(1),
-      //     'stats.lastUpdated': FieldValue.serverTimestamp(),
-      //   });
-
-      // 2. Fetch existing stats + user info
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userPhoneNumber)
-          .get();
-
-      final data = userDoc.data() ?? {};
-      final stats = Map<String, dynamic>.from(data['stats'] ?? {});
-
-      final oldScore = (stats['rankScore'] ?? 0.0).toDouble();
-      final oldAttempts = (stats['totalAttempted'] ?? 0).toDouble();
-      final oldTotalScore = (stats['totalScore'] ?? 0).toInt();
-      final oldTotalWrong = (stats['totalWrong'] ?? 0).toInt();
-      final oldAccuracySum = (stats['totalAccuracySum'] ?? 0.0).toDouble();
-      final oldTests = (stats['totalTests'] ?? 0).toInt();
-
-      final newAttempts = attemptedCount.toDouble();
-      final newAccuracy =
-          attemptedCount > 0 ? correctCount / attemptedCount : 0.0;
-
-      // 3. Apply PDF formula (rolling score)
-      final newRankScore = (oldAttempts + newAttempts) == 0
-          ? newAccuracy
-          : ((oldScore * oldAttempts) + (newAccuracy * newAttempts)) /
-              (oldAttempts + newAttempts);
-
-      final formattedRankScore = double.parse(newRankScore.toStringAsFixed(1));
-
-      // 4. Build new stats map
-      final updatedStats = {
-        'totalScore': oldTotalScore + correctCount,
-        'totalWrong': oldTotalWrong + wrongCount,
-        'totalAttempted': oldAttempts.toInt() + attemptedCount,
-        'totalAccuracySum': oldAccuracySum + double.parse(accuracy),
-        'totalTests': oldTests + 1,
-        'rankScore': formattedRankScore,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      };
-
-      // 5. Update user stats (replace whole map)
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userPhoneNumber)
-          .update({'stats': updatedStats});
-
-      // 6. Update leaderboard entry
-      await FirebaseFirestore.instance
-          .collection('leaderboard')
-          .doc(userPhoneNumber)
-          .set({
-        if (data['name'] != null) 'name': data['name'],
-        if (data['city'] != null) 'city': data['city'],
-        'rankScore': formattedRankScore,
-        'totalScore': updatedStats['totalScore'],
-        'totalTests': updatedStats['totalTests'],
-        'avgAccuracy': double.parse(
-            (updatedStats['totalAccuracySum'] / updatedStats['totalTests'])
-                .toStringAsFixed(6)),
-        'lastUpdated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      currentRankScore = await submitAndUpdateLeaderboard(
+        userPhoneNumber: userPhoneNumber,
+        testType: "pyq",
+        marks: totalScore, // use weighted score
+        correctCount: correctCount,
+        wrongCount: wrongCount,
+        attemptedCount: attemptedCount,
+        unansweredCount: unansweredCount,
+        totalQuestions: totalQuestions,
+        accuracy: accuracy,
+        timeLeft: timeLeft,
+        year: provider.year,
+        pyqType: provider.pyqType,
+      );
     }
   } catch (e) {
-    // Handle Firebase errors if needed
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Failed to submit test: $e')),
     );
@@ -453,6 +532,7 @@ void _submitTest(TestProvider provider, TimerController timerController,
         correctCount: correctCount,
         unansweredCount: unansweredCount,
         timeTaken: timeLeft,
+        currentRankScorePoints: currentRankScore,
       ),
     ),
   );

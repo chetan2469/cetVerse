@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:cet_verse/core/auth/AuthProvider.dart';
+import 'package:cet_verse/features/courses/pyq/tests/components/common_test_add_function.dart.dart';
 import 'package:cet_verse/features/courses/pyq/tests/new_test_view/widets.dart';
 import 'package:cet_verse/features/courses/tests/test_result_page.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tex/flutter_tex.dart';
 import 'package:provider/provider.dart';
@@ -278,6 +278,8 @@ class _TestTakingPageState extends State<TestTakingPage> {
     int correctCount = 0;
     int unansweredCount = 0;
 
+    double currentRankScore = 0.0;
+
     for (int i = 0; i < widget.mcqs.length; i++) {
       if (userAnswers[i] == -1) {
         unansweredCount++;
@@ -308,112 +310,26 @@ class _TestTakingPageState extends State<TestTakingPage> {
       ),
     );
 
-    try {
-      if (userPhoneNumber != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userPhoneNumber)
-            .collection('testHistory')
-            .add({
-          'score': score,
-          'timeleft': timeLeft,
-          'accuracy': accuracy,
-          'correct': correctCount,
-          'wrong': wrongCount,
-          'unattempted': unansweredCount,
-          'level': widget.level,
-          'subject': widget.subject,
-          'chapter': widget.chapter,
-          'testnumber': widget.testNumber,
-          'timestamp': FieldValue.serverTimestamp(),
-          'attempted': attemptedCount, //new
-          'totalQuestion': widget.mcqs.length, //new
-        });
-
-        // await FirebaseFirestore.instance
-        //     .collection('users')
-        //     .doc(userPhoneNumber)
-        //     .update({
-        //   'stats.totalTestMark': FieldValue.increment(widget.mcqs.length),
-        //   'stats.totalScore': FieldValue.increment(correctCount),
-        //   'stats.totalWrong': FieldValue.increment(wrongCount),
-        //   'stats.totalAttempted': FieldValue.increment(attemptedCount),
-        //   'stats.totalUnattempted': FieldValue.increment(unansweredCount),
-        //   'stats.totalAccuracy': FieldValue.increment(double.parse(accuracy)),
-        //   'stats.totalTests': FieldValue.increment(1),
-        //   'stats.lastUpdated': FieldValue.serverTimestamp(),
-        // });
-
-        // 2. Fetch existing stats + user info
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userPhoneNumber)
-            .get();
-
-        final data = userDoc.data() ?? {};
-        final stats = Map<String, dynamic>.from(data['stats'] ?? {});
-
-        final oldScore = (stats['rankScore'] ?? 0.0).toDouble();
-        final oldAttempts = (stats['totalAttempted'] ?? 0).toDouble();
-        final oldTotalScore = (stats['totalScore'] ?? 0).toInt();
-        final oldTotalWrong = (stats['totalWrong'] ?? 0).toInt();
-        final oldAccuracySum = (stats['totalAccuracySum'] ?? 0.0).toDouble();
-        final oldTests = (stats['totalTests'] ?? 0).toInt();
-
-        final newAttempts = attemptedCount.toDouble();
-        final newAccuracy =
-            attemptedCount > 0 ? correctCount / attemptedCount : 0.0;
-
-        // 3. Apply PDF formula (rolling score)
-        final newRankScore = (oldAttempts + newAttempts) == 0
-            ? newAccuracy
-            : ((oldScore * oldAttempts) + (newAccuracy * newAttempts)) /
-                (oldAttempts + newAttempts);
-
-        final formattedRankScore =
-            double.parse(newRankScore.toStringAsFixed(1));
-
-        // 4. Build new stats map
-        final updatedStats = {
-          'totalScore': oldTotalScore + correctCount,
-          'totalWrong': oldTotalWrong + wrongCount,
-          'totalAttempted': oldAttempts.toInt() + attemptedCount,
-          'totalAccuracySum': oldAccuracySum + double.parse(accuracy),
-          'totalTests': oldTests + 1,
-          'rankScore': formattedRankScore,
-          'lastUpdated': FieldValue.serverTimestamp(),
-        };
-
-        // 5. Update user stats (replace whole map)
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userPhoneNumber)
-            .update({'stats': updatedStats});
-
-        // 6. Update leaderboard entry
-        await FirebaseFirestore.instance
-            .collection('leaderboard')
-            .doc(userPhoneNumber)
-            .set({
-          if (data['name'] != null) 'name': data['name'],
-          if (data['city'] != null) 'city': data['city'],
-          'rankScore': formattedRankScore,
-          'totalScore': updatedStats['totalScore'],
-          'totalTests': updatedStats['totalTests'],
-          'avgAccuracy': double.parse(
-              (updatedStats['totalAccuracySum'] / updatedStats['totalTests'])
-                  .toStringAsFixed(6)),
-          'lastUpdated': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-    } catch (e) {
-      // Handle Firebase errors if needed
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit test: $e')),
+    if (userPhoneNumber != null) {
+      currentRankScore = await submitAndUpdateLeaderboard(
+        userPhoneNumber: userPhoneNumber,
+        testType: "test",
+        marks: score,
+        correctCount: correctCount,
+        wrongCount: wrongCount,
+        attemptedCount: attemptedCount,
+        unansweredCount: unansweredCount,
+        totalQuestions: widget.mcqs.length,
+        accuracy: accuracy,
+        timeLeft: timeLeft,
+        level: widget.level,
+        subject: widget.subject,
+        chapter: widget.chapter,
+        testNumber: widget.testNumber,
       );
-    } finally {
-      Navigator.pop(context); // Close loading dialog
     }
+
+    Navigator.pop(context);
 
     Navigator.pushReplacement(
       context,
@@ -424,6 +340,7 @@ class _TestTakingPageState extends State<TestTakingPage> {
           correctCount: correctCount,
           unansweredCount: unansweredCount,
           timeTaken: timeLeft,
+          currentRankScorePoints: currentRankScore,
         ),
       ),
     );
@@ -456,7 +373,7 @@ class _TestTakingPageState extends State<TestTakingPage> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          final bool? shouldPop = await showBackConfirmation2(context);
+          final bool? shouldPop = await showExitDialog(context);
           if (shouldPop == true && context.mounted) {
             Navigator.pop(context);
           }
@@ -479,114 +396,7 @@ class _TestTakingPageState extends State<TestTakingPage> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
             onPressed: () async {
-              final shouldExit = await showGeneralDialog<bool>(
-                    context: context,
-                    barrierDismissible: false,
-                    barrierLabel: '',
-                    barrierColor: Colors.black54,
-                    transitionDuration: const Duration(milliseconds: 300),
-                    pageBuilder: (ctx, animation, secondaryAnimation) =>
-                        Container(),
-                    transitionBuilder:
-                        (ctx, animation, secondaryAnimation, child) {
-                      return ScaleTransition(
-                        scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-                          CurvedAnimation(
-                              parent: animation, curve: Curves.easeOutBack),
-                        ),
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: AlertDialog(
-                            backgroundColor: Colors.white,
-                            elevation: 24,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20)),
-                            contentPadding: const EdgeInsets.all(24),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.orange.shade100,
-                                        Colors.red.shade100
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(50),
-                                  ),
-                                  child: Icon(Icons.warning_amber_rounded,
-                                      color: Colors.red.shade600, size: 32),
-                                ),
-                                const SizedBox(height: 20),
-                                const Text(
-                                  'Hold on!',
-                                  style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Are you sure you want to leave? Your progress might not be saved.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey.shade600,
-                                    height: 1.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () =>
-                                            Navigator.of(ctx).pop(false),
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 14),
-                                          side: BorderSide(
-                                              color: Colors.grey.shade300),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                        child: const Text('Cancel',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w500)),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: FilledButton(
-                                        onPressed: () =>
-                                            Navigator.of(ctx).pop(true),
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: Colors.red.shade500,
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 14),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                        child: const Text('Leave',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w500)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ) ??
-                  false;
+              final shouldExit = await showExitDialog(context) ?? false;
               if (shouldExit) Navigator.of(context).pop();
             },
           ),

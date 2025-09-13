@@ -1,7 +1,10 @@
+import 'package:cet_verse/core/auth/AuthProvider.dart';
 import 'package:cet_verse/main.dart';
 import 'package:cet_verse/ui/theme/constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tex/flutter_tex.dart';
+import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart'
     as webview_android;
@@ -12,6 +15,7 @@ class TestResultPage extends StatefulWidget {
   final int correctCount;
   final int unansweredCount;
   final String timeTaken;
+  final double currentRankScorePoints;
 
   const TestResultPage({
     super.key,
@@ -20,6 +24,7 @@ class TestResultPage extends StatefulWidget {
     required this.correctCount,
     required this.unansweredCount,
     required this.timeTaken,
+    required this.currentRankScorePoints,
   });
 
   @override
@@ -33,10 +38,13 @@ class _TestResultPageState extends State<TestResultPage> {
   final Map<int, Widget> _renderedCache = {};
   bool _isWebViewInitialized = false;
 
+  int currentRank = 0;
+
   @override
   void initState() {
     super.initState();
     _initializeWebView();
+    _fetchCurrentRank();
   }
 
   Future<void> _initializeWebView() async {
@@ -45,6 +53,28 @@ class _TestResultPageState extends State<TestResultPage> {
     setState(() {
       _isWebViewInitialized = true;
     });
+  }
+
+  Future<void> _fetchCurrentRank() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userPhoneNumber = authProvider.userPhoneNumber;
+    final leaderboard = FirebaseFirestore.instance.collection('leaderboard');
+
+    // Fetch ordered leaderboard
+    final snapshot =
+        await leaderboard.orderBy('rankScore', descending: true).get();
+
+    // Find index of current user
+    final docs = snapshot.docs;
+    final index = docs.indexWhere((doc) => doc.id == userPhoneNumber);
+
+    if (index != -1) {
+      currentRank = index + 1; // because index starts from 0
+    } else {
+      currentRank = -1; // not found
+    }
+
+    setState(() {});
   }
 
   int _answerToIndex(String answer) {
@@ -425,6 +455,7 @@ class _TestResultPageState extends State<TestResultPage> {
               icon: const Icon(Icons.arrow_back, color: Colors.blue),
               onPressed: () {
                 Navigator.pop(context);
+                Navigator.pop(context);
               },
               tooltip: 'Go to Home',
             ),
@@ -440,8 +471,8 @@ class _TestResultPageState extends State<TestResultPage> {
           children: [
             Container(
               width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -479,22 +510,28 @@ class _TestResultPageState extends State<TestResultPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildStatCard(
+                        currentRank.toString(),
+                        'Current Rank',
+                        Colors.blue,
+                        Icons.workspace_premium,
+                      ),
+                      _buildStatCard(
+                        "${widget.currentRankScorePoints * 10 ~/ 1}",
+                        'Rank Point',
+                        Colors.purple,
+                        Icons.emoji_events,
+                      ),
+                      _buildStatCard(
                         '${widget.correctCount}/$totalQuestions',
                         'Score',
                         Colors.blue,
                         Icons.star,
                       ),
-                      _buildStatCard(
-                        widget.timeTaken,
-                        'Time Left',
-                        Colors.purple,
-                        Icons.timer,
-                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildStatItem(
                         widget.correctCount.toString(),
@@ -513,6 +550,12 @@ class _TestResultPageState extends State<TestResultPage> {
                         'Unattempted',
                         Colors.orange,
                         Icons.help_outline,
+                      ),
+                      _buildStatItem(
+                        widget.timeTaken,
+                        'Time Left',
+                        Colors.purple,
+                        Icons.timer,
                       ),
                     ],
                   ),
@@ -626,7 +669,7 @@ class _TestResultPageState extends State<TestResultPage> {
           side: BorderSide(color: color.withOpacity(0.2)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           child: Column(
             children: [
               Icon(icon, color: color, size: 24),
@@ -655,33 +698,35 @@ class _TestResultPageState extends State<TestResultPage> {
 
   Widget _buildStatItem(
       String count, String label, Color color, IconData icon) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 24),
           ),
-          child: Icon(icon, color: color, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          count,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
+          const SizedBox(height: 8),
+          Text(
+            count,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[700],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[700],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
